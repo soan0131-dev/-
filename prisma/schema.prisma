@@ -1,0 +1,259 @@
+// 입퇴사자 관리 + 전직원 현황판 시스템 데이터 모델
+// 참고: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------- 공용 Enum ----------
+
+enum Role {
+  ADMIN // 인사총괄/시스템 관리자
+  HR // 인사담당자 (케이스 생성/전체 조회)
+  DEPT_APPROVER // 부서 담당자 (자기 부서 체크리스트 승인)
+  VIEWER // 조회 전용
+}
+
+enum EmployeeStatus {
+  PENDING_ENTRY // 입사예정 (입사 케이스 진행중)
+  ACTIVE // 재직중
+  ON_LEAVE // 휴직
+  PENDING_EXIT // 퇴사예정 (퇴사 케이스 진행중)
+  TERMINATED // 퇴사완료
+}
+
+enum ContractType {
+  REGULAR // 정규직
+  CONTRACT // 계약직
+  INTERN // 인턴
+}
+
+enum CaseType {
+  ONBOARDING
+  OFFBOARDING
+}
+
+enum CaseStatus {
+  IN_PROGRESS
+  COMPLETED
+  REJECTED
+  CANCELLED
+}
+
+enum StepStatus {
+  PENDING // 이전 그룹 대기중 (아직 활성화 안됨)
+  ACTIVE // 담당자 확인/결재 대기중
+  APPROVED
+  REJECTED
+}
+
+// ---------- 조직/사용자 ----------
+
+model Department {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  code      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  employees     Employee[]
+  users         User[]
+  stepTemplates CaseStepTemplate[]
+  caseSteps     CaseStep[]
+
+  @@map("departments")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         Role     @default(VIEWER)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id])
+
+  // 재직 중인 직원과 연결된 계정인 경우 (본인 케이스 조회 등에 활용 가능)
+  employeeId String?   @unique
+  employee   Employee? @relation(fields: [employeeId], references: [id])
+
+  initiatedCases  EmployeeCase[]   @relation("CaseInitiator")
+  approvedSteps   CaseStep[]       @relation("StepApprover")
+  uploadedDocs    Document[]       @relation("DocumentUploader")
+  notifications   Notification[]
+  auditLogs       AuditLog[]
+
+  @@map("users")
+}
+
+// ---------- 전직원 현황판 (마스터 데이터) ----------
+
+model Employee {
+  id               String         @id @default(cuid())
+  employeeNumber   String         @unique
+  name             String
+  status           EmployeeStatus @default(PENDING_ENTRY)
+  contractType     ContractType   @default(REGULAR)
+  position         String?
+  hireDate         DateTime
+  terminationDate  DateTime?
+  phone            String?
+  email            String?        @unique
+  personalEmail    String?
+  yearsOfExperience Int           @default(0) // 입사 전 경력연수 (근속연수는 hireDate로 계산)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id])
+
+  qualifications Qualification[]
+  cases          EmployeeCase[]
+  userAccount    User?
+
+  @@index([departmentId])
+  @@index([status])
+  @@map("employees")
+}
+
+model Qualification {
+  id                 String    @id @default(cuid())
+  employeeId         String
+  employee           Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  name               String // 예: KICPA, AICPA, CFA 등
+  registrationNumber String?
+  acquiredDate       DateTime?
+  createdAt          DateTime  @default(now())
+
+  @@index([employeeId])
+  @@map("qualifications")
+}
+
+// ---------- 입퇴사 케이스 / 결재 워크플로우 ----------
+
+model EmployeeCase {
+  id            String     @id @default(cuid())
+  type          CaseType
+  status        CaseStatus @default(IN_PROGRESS)
+  note          String?
+  initiatedAt   DateTime   @default(now())
+  completedAt   DateTime?
+
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id])
+
+  initiatedById String
+  initiatedBy   User   @relation("CaseInitiator", fields: [initiatedById], references: [id])
+
+  steps     CaseStep[]
+  documents Document[]
+
+  @@index([employeeId])
+  @@index([status])
+  @@map("employee_cases")
+}
+
+// 부서별 체크리스트 템플릿 (관리자가 화면에서 편집)
+model CaseStepTemplate {
+  id            String   @id @default(cuid())
+  type          CaseType
+  title         String
+  description   String?
+  sequenceGroup Int // 같은 그룹=병렬 확인, 그룹 번호 오름차순으로 순차 진행
+  displayOrder  Int      @default(0)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id])
+
+  @@index([type, isActive])
+  @@map("case_step_templates")
+}
+
+// 실제 케이스에 생성된 체크리스트 항목
+model CaseStep {
+  id            String     @id @default(cuid())
+  title         String
+  description   String?
+  sequenceGroup Int
+  displayOrder  Int        @default(0)
+  status        StepStatus @default(PENDING)
+  comment       String?
+  approvedAt    DateTime?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  caseId String
+  case   EmployeeCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id])
+
+  approvedById String?
+  approvedBy   User?   @relation("StepApprover", fields: [approvedById], references: [id])
+
+  @@index([caseId])
+  @@index([departmentId, status])
+  @@map("case_steps")
+}
+
+// ---------- 서류 / 알림 / 감사로그 ----------
+
+model Document {
+  id               String   @id @default(cuid())
+  type             String // 예: 근로계약서, 신분증사본, 퇴직확인서 등
+  originalFileName String
+  filePath         String
+  mimeType         String
+  fileSize         Int
+  uploadedAt       DateTime @default(now())
+
+  caseId String
+  case   EmployeeCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  uploadedById String
+  uploadedBy   User   @relation("DocumentUploader", fields: [uploadedById], references: [id])
+
+  @@index([caseId])
+  @@map("documents")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  message   String
+  link      String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  action     String
+  targetType String
+  targetId   String
+  detail     String?
+  createdAt  DateTime @default(now())
+
+  actorId String?
+  actor   User?   @relation(fields: [actorId], references: [id])
+
+  @@index([targetType, targetId])
+  @@map("audit_logs")
+}
