@@ -58,6 +58,25 @@
    npm run dev
    ```
 
+### Windows에서 간편 실행 (`run.bat`)
+
+저장소를 한 번 clone한 뒤, 이후에는 `run.bat`을 더블클릭하면 매번
+① 최신 코드 pull → ② 패키지 설치 → ③ DB 마이그레이션 적용 → ④ 기준 데이터 확인
+→ ⑤ 개발 서버 실행까지 자동으로 진행됩니다.
+
+```bat
+git clone https://github.com/soan0131-dev/- 프로젝트폴더
+cd 프로젝트폴더
+git checkout claude/employee-onboarding-offboarding-workflow-rqf49b
+copy .env.example .env
+:: .env를 본인 로컬 PostgreSQL 정보로 수정한 뒤
+run.bat
+```
+
+이후에는 `run.bat`만 다시 실행하면 최신 코드로 갱신 후 바로 서버가 뜹니다.
+로컬에 PostgreSQL이 설치·실행 중이어야 하며, `.env`의 `DATABASE_URL`이 해당
+DB를 가리켜야 합니다.
+
 ## 프로덕션 배포 (Docker Compose)
 
 ```bash
