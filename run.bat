@@ -48,7 +48,7 @@ if not exist ".git" (
     exit /b 1
 )
 
-echo [1/5] Pulling latest code... (%BRANCH%)
+echo [1/6] Pulling latest code... (%BRANCH%)
 git pull origin %BRANCH%
 if errorlevel 1 (
     echo [ERROR] git pull failed. See the message above.
@@ -69,7 +69,7 @@ if not exist ".env" (
 )
 
 echo.
-echo [2/5] Installing/updating packages...
+echo [2/6] Installing/updating packages...
 call npm install
 if errorlevel 1 (
     echo [ERROR] npm install failed.
@@ -78,7 +78,16 @@ if errorlevel 1 (
 )
 
 echo.
-echo [3/5] Applying database migrations...
+echo [3/6] Generating Prisma Client...
+call npx prisma generate
+if errorlevel 1 (
+    echo [ERROR] Prisma Client generation failed.
+    pause
+    exit /b 1
+)
+
+echo.
+echo [4/6] Applying database migrations...
 call npx prisma migrate deploy
 if errorlevel 1 (
     echo [ERROR] Migration failed.
@@ -88,11 +97,11 @@ if errorlevel 1 (
 )
 
 echo.
-echo [4/5] Checking baseline data... (departments/accounts/templates, skips if already present)
+echo [5/6] Checking baseline data... (departments/accounts/templates, skips if already present)
 call npm run db:seed
 
 echo.
-echo [5/5] Starting dev server. Press Ctrl+C in this window to stop.
+echo [6/6] Starting dev server. Press Ctrl+C in this window to stop.
 echo   Open: http://localhost:3000
 echo.
 call npm run dev
