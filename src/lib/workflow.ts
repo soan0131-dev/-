@@ -95,7 +95,11 @@ async function notifyStepApprovers(
     const approvers = await tx.user.findMany({
       where: {
         isActive: true,
-        OR: [{ role: "ADMIN" }, { role: "DEPT_APPROVER", departmentId: step.departmentId }],
+        OR: [
+          { role: "ADMIN" },
+          { role: "DEPT_APPROVER", departmentId: step.departmentId },
+          { role: "HR", departmentId: step.departmentId },
+        ],
       },
       select: { id: true },
     });
@@ -118,7 +122,11 @@ export function canActOnStep(
   step: { departmentId: string }
 ) {
   if (user.role === "ADMIN") return true;
-  return user.role === "DEPT_APPROVER" && user.departmentId === step.departmentId;
+  // HR 역할은 인사팀 스텝에 한해 부서담당자와 동일하게 승인 권한을 가진다.
+  if (user.role === "DEPT_APPROVER" || user.role === "HR") {
+    return user.departmentId === step.departmentId;
+  }
+  return false;
 }
 
 /**
