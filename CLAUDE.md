@@ -4,7 +4,29 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Status
 
-This repository is currently empty — there are no commits on any branch, locally or on the remote (`origin` at `soan0131-dev/-`). There is no existing codebase, build system, test suite, or architecture to document yet. Once code is added, this file should be updated to reflect actual build/lint/test commands and the real architecture — do not invent commands or structure that don't exist.
+이 저장소는 "일정 가능 여부 확인(Schedule Availability)" 웹 앱을 담고 있습니다.
+여러 참가자가 각자 가능한 날짜를 캘린더에 표시하면, 가장 많은 인원이 겹치는 날짜를
+자동으로 계산해서 보여주는 도구입니다.
+
+### 구조
+
+- `server.js` — Node.js 내장 모듈(`http`, `fs`, `crypto`)만 사용하는 정적 파일 서버 + REST API. 외부 의존성 없음.
+- `public/` — 바닐라 HTML/CSS/JS 프런트엔드 (`index.html`, `style.css`, `app.js`).
+- `data/` — 일정 데이터(JSON)가 런타임에 저장되는 디렉터리. `data/*.json`은 git에 커밋되지 않음(`.gitignore` 참고).
+
+### 실행 방법
+
+```bash
+node server.js
+```
+기본 포트는 `PORT` 환경 변수(기본값 3000)로 설정하며, `DATA_DIR`, `MAX_RANGE_DAYS` 등도
+환경 변수로 조정합니다. 자세한 내용은 `README.md` 참고.
+
+### 빌드/테스트
+
+별도의 빌드 단계나 자동화된 테스트 스위트는 아직 없습니다. 코드 검증은 `node server.js`로
+서버를 띄운 뒤 브라우저에서 직접 동작을 확인하는 방식입니다. 테스트를 추가하게 되면
+이 섹션을 실제 명령어로 갱신할 것.
 
 ## Development Guidelines
 

@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>일정 가능 여부 확인</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>📅 일정 가능 여부 확인</h1>
+    <p class="subtitle">여러 명이 가능한 날짜를 표시하고, 겹치는 날을 한눈에 찾아보세요.</p>
+  </header>
+
+  <section id="create-section">
+    <h2>새 일정 만들기</h2>
+    <form id="create-form">
+      <label>
+        일정 제목
+        <input type="text" id="title-input" maxlength="100" placeholder="예) 팀 회식" required>
+      </label>
+      <div class="date-row">
+        <label>
+          시작일
+          <input type="date" id="start-input" required>
+        </label>
+        <label>
+          종료일
+          <input type="date" id="end-input" required>
+        </label>
+      </div>
+      <button type="submit">일정 만들기</button>
+    </form>
+    <p id="create-error" class="error" role="alert"></p>
+  </section>
+
+  <section id="event-section" hidden>
+    <h2 id="event-title"></h2>
+    <p id="event-range" class="subtitle"></p>
+
+    <div class="share-box">
+      <input type="text" id="share-link" readonly aria-label="공유 링크">
+      <button id="copy-link-btn" type="button">링크 복사</button>
+    </div>
+
+    <div class="name-box">
+      <label>
+        내 이름
+        <input type="text" id="name-input" maxlength="30" placeholder="이름을 입력하세요">
+      </label>
+      <span id="save-status" aria-live="polite"></span>
+    </div>
+
+    <p class="hint">이름을 입력한 뒤, 표에서 본인 행의 가능한 날짜 칸을 클릭하세요.</p>
+
+    <div id="best-dates"></div>
+
+    <div class="table-wrap">
+      <table id="avail-table"></table>
+    </div>
+
+    <p id="event-error" class="error" role="alert"></p>
+  </section>
+</div>
+<script src="/app.js" defer></script>
+</body>
+</html>

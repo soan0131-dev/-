@@ -1,0 +1,13 @@
+{
+  "name": "schedule-availability",
+  "version": "1.0.0",
+  "description": "여러 인원의 가능한 날짜를 표시하고 겹치는 일정을 찾는 웹 앱",
+  "private": true,
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=14.17.0"
+  }
+}
