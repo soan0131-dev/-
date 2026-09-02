@@ -133,7 +133,12 @@ export default async function CaseDetailPage({
     employeeCase.type === "ONBOARDING" ? getRequiredDocumentItems(employeeCase.checklistType) : [];
   const documentTypeOptions =
     requiredItems.length > 0 ? [...requiredItems, "기타"] : OFFBOARDING_DOCUMENT_TYPES;
-  const uploadedTypes = new Set(employeeCase.documents.map((d) => d.type));
+
+  // documents가 uploadedAt desc로 정렬되어 있으므로, 타입별로 처음 만나는 항목이 최신본이다.
+  const latestDocByType = new Map<string, (typeof employeeCase.documents)[number]>();
+  for (const doc of employeeCase.documents) {
+    if (!latestDocByType.has(doc.type)) latestDocByType.set(doc.type, doc);
+  }
 
   return (
     <div className="space-y-8">
@@ -252,19 +257,63 @@ export default async function CaseDetailPage({
                 <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-400">
                   {group.category}
                 </p>
-                <ul className="space-y-1 text-sm">
+                <ul className="space-y-2 text-sm">
                   {group.items.map((item) => {
-                    const done = uploadedTypes.has(item);
+                    const doc = latestDocByType.get(item);
+                    const done = !!doc;
                     return (
-                      <li key={item} className="flex items-center gap-2">
-                        <span
-                          className={`flex h-4 w-4 items-center justify-center rounded-full text-[10px] ${
-                            done ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-400"
-                          }`}
-                        >
-                          {done ? "✓" : ""}
-                        </span>
-                        <span className={done ? "text-slate-500 line-through" : "text-slate-800"}>{item}</span>
+                      <li key={item} className="flex flex-wrap items-center justify-between gap-2 py-0.5">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] ${
+                              done ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-400"
+                            }`}
+                          >
+                            {done ? "✓" : ""}
+                          </span>
+                          <span className={done ? "text-slate-500 line-through" : "text-slate-800"}>{item}</span>
+                        </div>
+                        {done ? (
+                          <div className="flex items-center gap-2 pl-6">
+                            <a
+                              href={`/api/documents/${doc.id}`}
+                              className="text-xs text-blue-600 hover:underline"
+                            >
+                              {doc.originalFileName}
+                            </a>
+                            <form action={uploadAction} className="flex items-center gap-1">
+                              <input type="hidden" name="type" value={item} />
+                              <input
+                                type="file"
+                                name="file"
+                                required
+                                className="w-32 text-xs text-slate-400 file:mr-1 file:rounded file:border-0 file:bg-slate-100 file:px-1.5 file:py-0.5 file:text-xs"
+                              />
+                              <button
+                                type="submit"
+                                className="rounded border border-slate-300 px-2 py-0.5 text-xs hover:bg-slate-50"
+                              >
+                                재첨부
+                              </button>
+                            </form>
+                          </div>
+                        ) : (
+                          <form action={uploadAction} className="flex items-center gap-1 pl-6">
+                            <input type="hidden" name="type" value={item} />
+                            <input
+                              type="file"
+                              name="file"
+                              required
+                              className="w-40 text-xs file:mr-1 file:rounded file:border-0 file:bg-slate-100 file:px-1.5 file:py-0.5 file:text-xs"
+                            />
+                            <button
+                              type="submit"
+                              className="rounded border border-slate-300 px-2 py-0.5 text-xs hover:bg-slate-50"
+                            >
+                              첨부
+                            </button>
+                          </form>
+                        )}
                       </li>
                     );
                   })}
@@ -276,7 +325,9 @@ export default async function CaseDetailPage({
       )}
 
       <section>
-        <h2 className="text-sm font-semibold text-slate-900">서류</h2>
+        <h2 className="text-sm font-semibold text-slate-900">
+          {requiredItems.length > 0 ? "업로드된 서류 전체 목록" : "서류"}
+        </h2>
         <div className="mt-3 rounded-lg border border-slate-200 bg-white p-4">
           <ul className="space-y-2 text-sm">
             {employeeCase.documents.length === 0 && <p className="text-slate-400">업로드된 서류가 없습니다.</p>}
@@ -297,14 +348,20 @@ export default async function CaseDetailPage({
 
           <form action={uploadAction} className="mt-4 flex flex-wrap items-end gap-2 border-t border-slate-100 pt-4">
             <div>
-              <label className="block text-xs font-medium text-slate-500">서류 종류</label>
-              <select name="type" className="mt-1 rounded-md border border-slate-300 px-2 py-1.5 text-sm">
-                {documentTypeOptions.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
+              <label className="block text-xs font-medium text-slate-500">
+                {requiredItems.length > 0 ? "체크리스트에 없는 기타 서류" : "서류 종류"}
+              </label>
+              {requiredItems.length > 0 ? (
+                <input type="hidden" name="type" value="기타" />
+              ) : (
+                <select name="type" className="mt-1 rounded-md border border-slate-300 px-2 py-1.5 text-sm">
+                  {documentTypeOptions.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-500">파일</label>
