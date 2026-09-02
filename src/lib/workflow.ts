@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import {
   CaseStatus,
   CaseType,
+  DocumentChecklistType,
   EmployeeStatus,
   StepStatus,
 } from "@/generated/prisma/client";
@@ -16,8 +17,9 @@ export async function startCase(params: {
   type: CaseType;
   initiatedById: string;
   note?: string;
+  checklistType?: DocumentChecklistType;
 }) {
-  const { employeeId, type, initiatedById, note } = params;
+  const { employeeId, type, initiatedById, note, checklistType } = params;
 
   const templates = await prisma.caseStepTemplate.findMany({
     where: { type, isActive: true },
@@ -38,6 +40,7 @@ export async function startCase(params: {
         type,
         status: CaseStatus.IN_PROGRESS,
         note,
+        checklistType: type === CaseType.ONBOARDING ? checklistType : undefined,
         employeeId,
         initiatedById,
         steps: {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { CHECKLIST_TYPE_LABELS } from "@/lib/documents";
 
 type Department = { id: string; name: string };
 type Employee = { id: string; name: string; employeeNumber: string; departmentName: string };
@@ -61,6 +62,21 @@ export default function NewCaseForm({
             <TextField name="yearsOfExperience" label="경력연수(입사 전)" type="number" defaultValue="0" />
             <TextField name="email" label="사내 이메일" type="email" />
             <TextField name="phone" label="연락처" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-500">제출서류 체크리스트 유형</label>
+            <select
+              name="checklistType"
+              required
+              defaultValue="GENERAL"
+              className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+            >
+              {Object.entries(CHECKLIST_TYPE_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
           </div>
           <TextArea name="note" label="비고" />
           <button type="submit" className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700">

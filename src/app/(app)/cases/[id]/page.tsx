@@ -13,8 +13,12 @@ import {
   formatDate,
   formatDateTime,
 } from "@/lib/format";
-
-const DOCUMENT_TYPES = ["근로계약서", "신분증사본", "통장사본", "비밀유지서약서", "사직서", "퇴직확인서", "기타"];
+import {
+  CHECKLIST_TYPE_LABELS,
+  OFFBOARDING_DOCUMENT_TYPES,
+  REQUIRED_DOCUMENTS,
+  getRequiredDocumentItems,
+} from "@/lib/documents";
 
 export default async function CaseDetailPage({
   params,
@@ -125,6 +129,12 @@ export default async function CaseDetailPage({
 
   const hasRejected = employeeCase.steps.some((s) => s.status === "REJECTED");
 
+  const requiredItems =
+    employeeCase.type === "ONBOARDING" ? getRequiredDocumentItems(employeeCase.checklistType) : [];
+  const documentTypeOptions =
+    requiredItems.length > 0 ? [...requiredItems, "기타"] : OFFBOARDING_DOCUMENT_TYPES;
+  const uploadedTypes = new Set(employeeCase.documents.map((d) => d.type));
+
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -231,6 +241,40 @@ export default async function CaseDetailPage({
         </div>
       </section>
 
+      {employeeCase.type === "ONBOARDING" && employeeCase.checklistType && (
+        <section>
+          <h2 className="text-sm font-semibold text-slate-900">
+            제출서류 체크리스트 ({CHECKLIST_TYPE_LABELS[employeeCase.checklistType]})
+          </h2>
+          <div className="mt-3 space-y-4">
+            {REQUIRED_DOCUMENTS[employeeCase.checklistType].map((group) => (
+              <div key={group.category} className="rounded-lg border border-slate-200 bg-white p-4">
+                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-400">
+                  {group.category}
+                </p>
+                <ul className="space-y-1 text-sm">
+                  {group.items.map((item) => {
+                    const done = uploadedTypes.has(item);
+                    return (
+                      <li key={item} className="flex items-center gap-2">
+                        <span
+                          className={`flex h-4 w-4 items-center justify-center rounded-full text-[10px] ${
+                            done ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-400"
+                          }`}
+                        >
+                          {done ? "✓" : ""}
+                        </span>
+                        <span className={done ? "text-slate-500 line-through" : "text-slate-800"}>{item}</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       <section>
         <h2 className="text-sm font-semibold text-slate-900">서류</h2>
         <div className="mt-3 rounded-lg border border-slate-200 bg-white p-4">
@@ -255,7 +299,7 @@ export default async function CaseDetailPage({
             <div>
               <label className="block text-xs font-medium text-slate-500">서류 종류</label>
               <select name="type" className="mt-1 rounded-md border border-slate-300 px-2 py-1.5 text-sm">
-                {DOCUMENT_TYPES.map((t) => (
+                {documentTypeOptions.map((t) => (
                   <option key={t} value={t}>
                     {t}
                   </option>

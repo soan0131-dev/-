@@ -47,6 +47,10 @@ export default async function NewCasePage() {
       type: "ONBOARDING",
       initiatedById: session.user.id,
       note: (formData.get("note") as string) || undefined,
+      checklistType: formData.get("checklistType") as
+        | "GENERAL"
+        | "EXPERIENCED_CPA"
+        | "SIMPLIFIED",
     });
 
     redirect(`/cases/${employeeCase.id}`);

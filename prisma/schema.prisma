@@ -38,6 +38,13 @@ enum CaseType {
   OFFBOARDING
 }
 
+// 입사 제출서류 체크리스트 유형 (성현회계법인 입사서류 안내 기준)
+enum DocumentChecklistType {
+  GENERAL // 일반 정규직
+  EXPERIENCED_CPA // 경력직(공인회계사)
+  SIMPLIFIED // 간소화 대상(계약직/인턴 등)
+}
+
 enum CaseStatus {
   IN_PROGRESS
   COMPLETED
@@ -141,12 +148,14 @@ model Qualification {
 // ---------- 입퇴사 케이스 / 결재 워크플로우 ----------
 
 model EmployeeCase {
-  id            String     @id @default(cuid())
-  type          CaseType
-  status        CaseStatus @default(IN_PROGRESS)
-  note          String?
-  initiatedAt   DateTime   @default(now())
-  completedAt   DateTime?
+  id             String                 @id @default(cuid())
+  type           CaseType
+  status         CaseStatus             @default(IN_PROGRESS)
+  note           String?
+  // 입사 케이스에서 어떤 제출서류 체크리스트를 적용할지 (퇴사 케이스는 미사용)
+  checklistType  DocumentChecklistType?
+  initiatedAt    DateTime               @default(now())
+  completedAt    DateTime?
 
   employeeId String
   employee   Employee @relation(fields: [employeeId], references: [id])
