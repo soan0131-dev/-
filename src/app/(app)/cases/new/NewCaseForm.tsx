@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { CHECKLIST_TYPE_LABELS } from "@/lib/documents";
+import { CONTRACT_TYPE_LABELS } from "@/lib/format";
 import JobGradeFields from "@/components/JobGradeFields";
 import EmployeeSearchSelect from "@/components/EmployeeSearchSelect";
 
@@ -88,6 +89,20 @@ export default function NewCaseForm({
                 {departmentsInBranch.map((d) => (
                   <option key={d.id} value={d.id}>
                     {d.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-500">계약형태</label>
+              <select
+                name="contractType"
+                defaultValue="REGULAR"
+                className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+              >
+                {Object.entries(CONTRACT_TYPE_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
                   </option>
                 ))}
               </select>

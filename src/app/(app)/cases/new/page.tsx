@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { startCase } from "@/lib/workflow";
-import type { JobGrade, PartnerType, QualificationGrade } from "@/generated/prisma/client";
+import type { ContractType, JobGrade, PartnerType, QualificationGrade } from "@/generated/prisma/client";
 import NewCaseForm from "./NewCaseForm";
 
 async function requireHr() {
@@ -59,12 +59,14 @@ export default async function NewCasePage({
     const partnerType =
       jobGrade === "PARTNER" ? (((formData.get("partnerType") as string) || null) as PartnerType | null) : null;
     const qualificationGrades = formData.getAll("qualificationGrades") as QualificationGrade[];
+    const contractType = ((formData.get("contractType") as string) || "REGULAR") as ContractType;
 
     const employee = await prisma.employee.create({
       data: {
         name,
         employeeNumber,
         departmentId,
+        contractType,
         jobGrade,
         partnerType,
         qualificationGrades,
