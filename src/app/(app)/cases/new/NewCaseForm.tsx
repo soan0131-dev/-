@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { CHECKLIST_TYPE_LABELS } from "@/lib/documents";
-import { JOB_GRADE_LABELS, POSITION_TITLE_LABELS } from "@/lib/format";
+import JobGradeFields from "@/components/JobGradeFields";
 
 type Branch = { id: string; name: string };
 type Department = { id: string; name: string; branchId: string | null };
@@ -88,36 +88,7 @@ export default function NewCaseForm({
                 ))}
               </select>
             </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-500">직위</label>
-              <select
-                name="positionTitle"
-                defaultValue=""
-                className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
-              >
-                <option value="">선택안함</option>
-                {Object.entries(POSITION_TITLE_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-500">직급</label>
-              <select
-                name="jobGrade"
-                defaultValue=""
-                className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
-              >
-                <option value="">선택안함</option>
-                {Object.entries(JOB_GRADE_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <JobGradeFields />
             <TextField name="hireDate" label="입사(예정)일" type="date" required />
             <TextField name="yearsOfExperience" label="경력연수(입사 전)" type="number" defaultValue="0" />
             <TextField name="email" label="사내 이메일" type="email" />

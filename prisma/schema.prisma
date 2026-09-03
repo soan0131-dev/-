@@ -33,8 +33,8 @@ enum ContractType {
   INTERN // 인턴
 }
 
-// 직위 (표시 순서 = 정의 순서)
-enum PositionTitle {
+// 직급 (표시 순서 = 정의 순서)
+enum JobGrade {
   CHAIRMAN // 회장
   VICE_CHAIRMAN // 부회장
   CEO // 대표이사
@@ -59,13 +59,25 @@ enum PositionTitle {
   PENDING // 확인중
 }
 
-// 직급 (표시 순서 = 정의 순서)
-enum JobGrade {
-  PARTNER_KICPA_STAFF_DIRECTOR_REGISTERED // 파트너-KICPA(사원,이사,등록)
-  PARTNER_KICPA_STAFF_REGISTERED // 파트너-KICPA(사원,등록)
-  PARTNER_AICPA_STAFF // 파트너-AICPA(사원)
-  PARTNER_TAX_ACCOUNTANT // 파트너-세무사
+// 자격 (표시 순서 = 정의 순서)
+enum QualificationGrade {
   KICPA_REGISTERED // KICPA(등록)
+  KICPA_TRAINEE_YEAR2 // KICPA(수습-2년차)
+  KICPA_TRAINEE_YEAR1 // KICPA(수습-1년차)
+  AICPA // AICPA
+  TAX_ACCOUNTANT // 세무사
+  CISA // CISA
+  ACCA // ACCA
+  CIA // CIA
+  OTHER_PROFESSIONAL // 기타전문가
+  OTHER_STAFF // 기타직원
+}
+
+// 직급이 파트너일 때만 의미있는 세부 유형 (표시 순서 = 정의 순서)
+enum PartnerType {
+  PARTNER // 파트너
+  PARTNER_STAFF // 파트너(사원)
+  PARTNER_STAFF_DIRECTOR // 파트너(사원,이사)
 }
 
 enum CaseType {
@@ -98,10 +110,10 @@ enum StepStatus {
 
 // 본사/지사 구분 (서울본사, 부산지사, 대구지사, 창원지사 등)
 model Branch {
-  id          String   @id @default(cuid())
-  name        String   @unique
-  displayOrder Int     @default(0)
-  createdAt   DateTime @default(now())
+  id           String   @id @default(cuid())
+  name         String   @unique
+  displayOrder Int      @default(0)
+  createdAt    DateTime @default(now())
 
   departments Department[]
 
@@ -146,11 +158,11 @@ model User {
   employeeId String?   @unique
   employee   Employee? @relation(fields: [employeeId], references: [id])
 
-  initiatedCases  EmployeeCase[]   @relation("CaseInitiator")
-  approvedSteps   CaseStep[]       @relation("StepApprover")
-  uploadedDocs    Document[]       @relation("DocumentUploader")
-  notifications   Notification[]
-  auditLogs       AuditLog[]
+  initiatedCases EmployeeCase[] @relation("CaseInitiator")
+  approvedSteps  CaseStep[]     @relation("StepApprover")
+  uploadedDocs   Document[]     @relation("DocumentUploader")
+  notifications  Notification[]
+  auditLogs      AuditLog[]
 
   @@map("users")
 }
@@ -158,21 +170,22 @@ model User {
 // ---------- 전직원 현황판 (마스터 데이터) ----------
 
 model Employee {
-  id               String         @id @default(cuid())
-  employeeNumber   String         @unique
-  name             String
-  status           EmployeeStatus @default(PENDING_ENTRY)
-  contractType     ContractType   @default(REGULAR)
-  positionTitle    PositionTitle? // 직위
-  jobGrade         JobGrade? // 직급
-  hireDate         DateTime
-  terminationDate  DateTime?
-  phone            String?
-  email            String?        @unique
-  personalEmail    String?
-  yearsOfExperience Int           @default(0) // 입사 전 경력연수 (근속연수는 hireDate로 계산)
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+  id                 String              @id @default(cuid())
+  employeeNumber     String              @unique
+  name               String
+  status             EmployeeStatus      @default(PENDING_ENTRY)
+  contractType       ContractType        @default(REGULAR)
+  jobGrade           JobGrade? // 직급
+  partnerType        PartnerType? // 파트너 유형 (직급=PARTNER일 때만 의미있음)
+  qualificationGrade QualificationGrade? // 자격
+  hireDate           DateTime
+  terminationDate    DateTime?
+  phone              String?
+  email              String?             @unique
+  personalEmail      String?
+  yearsOfExperience  Int                 @default(0) // 입사 전 경력연수 (근속연수는 hireDate로 계산)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
 
   departmentId String
   department   Department @relation(fields: [departmentId], references: [id])
@@ -202,14 +215,14 @@ model Qualification {
 // ---------- 입퇴사 케이스 / 결재 워크플로우 ----------
 
 model EmployeeCase {
-  id             String                 @id @default(cuid())
-  type           CaseType
-  status         CaseStatus             @default(IN_PROGRESS)
-  note           String?
+  id            String                 @id @default(cuid())
+  type          CaseType
+  status        CaseStatus             @default(IN_PROGRESS)
+  note          String?
   // 입사 케이스에서 어떤 제출서류 체크리스트를 적용할지 (퇴사 케이스는 미사용)
-  checklistType  DocumentChecklistType?
-  initiatedAt    DateTime               @default(now())
-  completedAt    DateTime?
+  checklistType DocumentChecklistType?
+  initiatedAt   DateTime               @default(now())
+  completedAt   DateTime?
 
   employeeId String
   employee   Employee @relation(fields: [employeeId], references: [id])

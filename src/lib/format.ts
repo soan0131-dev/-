@@ -60,8 +60,8 @@ export const CONTRACT_TYPE_LABELS: Record<string, string> = {
   INTERN: "인턴",
 };
 
-// 순서 = 실제 표시 순서
-export const POSITION_TITLE_LABELS: Record<string, string> = {
+// 직급 (순서 = 실제 표시 순서)
+export const JOB_GRADE_LABELS: Record<string, string> = {
   CHAIRMAN: "회장",
   VICE_CHAIRMAN: "부회장",
   CEO: "대표이사",
@@ -86,13 +86,25 @@ export const POSITION_TITLE_LABELS: Record<string, string> = {
   PENDING: "확인중",
 };
 
-// 순서 = 실제 표시 순서
-export const JOB_GRADE_LABELS: Record<string, string> = {
-  PARTNER_KICPA_STAFF_DIRECTOR_REGISTERED: "파트너-KICPA(사원,이사,등록)",
-  PARTNER_KICPA_STAFF_REGISTERED: "파트너-KICPA(사원,등록)",
-  PARTNER_AICPA_STAFF: "파트너-AICPA(사원)",
-  PARTNER_TAX_ACCOUNTANT: "파트너-세무사",
+// 자격 (순서 = 실제 표시 순서)
+export const QUALIFICATION_GRADE_LABELS: Record<string, string> = {
   KICPA_REGISTERED: "KICPA(등록)",
+  KICPA_TRAINEE_YEAR2: "KICPA(수습-2년차)",
+  KICPA_TRAINEE_YEAR1: "KICPA(수습-1년차)",
+  AICPA: "AICPA",
+  TAX_ACCOUNTANT: "세무사",
+  CISA: "CISA",
+  ACCA: "ACCA",
+  CIA: "CIA",
+  OTHER_PROFESSIONAL: "기타전문가",
+  OTHER_STAFF: "기타직원",
+};
+
+// 파트너 유형 - 직급이 PARTNER일 때만 의미있음 (순서 = 실제 표시 순서)
+export const PARTNER_TYPE_LABELS: Record<string, string> = {
+  PARTNER: "파트너",
+  PARTNER_STAFF: "파트너(사원)",
+  PARTNER_STAFF_DIRECTOR: "파트너(사원,이사)",
 };
 
 export function formatDate(date: Date | string | null | undefined): string {

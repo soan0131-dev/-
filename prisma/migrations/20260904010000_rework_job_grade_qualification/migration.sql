@@ -1,0 +1,23 @@
+-- CreateEnum
+CREATE TYPE "QualificationGrade" AS ENUM ('KICPA_REGISTERED', 'KICPA_TRAINEE_YEAR2', 'KICPA_TRAINEE_YEAR1', 'AICPA', 'TAX_ACCOUNTANT', 'CISA', 'ACCA', 'CIA', 'OTHER_PROFESSIONAL', 'OTHER_STAFF');
+
+-- CreateEnum
+CREATE TYPE "PartnerType" AS ENUM ('PARTNER', 'PARTNER_STAFF', 'PARTNER_STAFF_DIRECTOR');
+
+-- AlterEnum
+BEGIN;
+CREATE TYPE "JobGrade_new" AS ENUM ('CHAIRMAN', 'VICE_CHAIRMAN', 'CEO', 'PRESIDENT', 'VICE_PRESIDENT', 'SENIOR_ADVISOR_VP', 'PARTNER', 'EXECUTIVE_DIRECTOR', 'EXECUTIVE_OFFICER', 'MANAGING_DIRECTOR', 'MANAGING_OFFICER', 'STANDING_ADVISOR', 'NON_STANDING_ADVISOR', 'DIRECTOR', 'MANAGER', 'SENIOR', 'ASSOCIATE', 'CHIEF_STAFF', 'SENIOR_STAFF', 'STAFF', 'INTERN', 'PENDING');
+ALTER TABLE "employees" ALTER COLUMN "jobGrade" TYPE "JobGrade_new" USING ("jobGrade"::text::"JobGrade_new");
+ALTER TYPE "JobGrade" RENAME TO "JobGrade_old";
+ALTER TYPE "JobGrade_new" RENAME TO "JobGrade";
+DROP TYPE "public"."JobGrade_old";
+COMMIT;
+
+-- AlterTable
+ALTER TABLE "employees" DROP COLUMN "positionTitle",
+ADD COLUMN     "partnerType" "PartnerType",
+ADD COLUMN     "qualificationGrade" "QualificationGrade";
+
+-- DropEnum
+DROP TYPE "PositionTitle";
+

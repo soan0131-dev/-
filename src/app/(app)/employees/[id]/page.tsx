@@ -10,7 +10,8 @@ import {
   EMPLOYEE_STATUS_COLORS,
   EMPLOYEE_STATUS_LABELS,
   JOB_GRADE_LABELS,
-  POSITION_TITLE_LABELS,
+  PARTNER_TYPE_LABELS,
+  QUALIFICATION_GRADE_LABELS,
   formatDate,
   tenureYears,
 } from "@/lib/format";
@@ -50,7 +51,7 @@ export default async function EmployeeDetailPage({
           <p className="mt-1 text-sm text-slate-500">
             {employee.department.branch ? `${employee.department.branch.name} · ` : ""}
             {employee.department.name} ·{" "}
-            {employee.positionTitle ? POSITION_TITLE_LABELS[employee.positionTitle] : "직위 미지정"} · 사번{" "}
+            {employee.jobGrade ? JOB_GRADE_LABELS[employee.jobGrade] : "직급 미지정"} · 사번{" "}
             {employee.employeeNumber}
           </p>
         </div>
@@ -72,6 +73,16 @@ export default async function EmployeeDetailPage({
             <Field
               label="직급"
               value={employee.jobGrade ? JOB_GRADE_LABELS[employee.jobGrade] : "-"}
+            />
+            {employee.jobGrade === "PARTNER" && (
+              <Field
+                label="파트너 유형"
+                value={employee.partnerType ? PARTNER_TYPE_LABELS[employee.partnerType] : "-"}
+              />
+            )}
+            <Field
+              label="자격"
+              value={employee.qualificationGrade ? QUALIFICATION_GRADE_LABELS[employee.qualificationGrade] : "-"}
             />
             <Field label="입사일" value={formatDate(employee.hireDate)} />
             <Field label="근속연수" value={`${tenureYears(employee.hireDate)}년`} />

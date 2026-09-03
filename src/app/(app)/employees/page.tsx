@@ -4,7 +4,7 @@ import {
   CONTRACT_TYPE_LABELS,
   EMPLOYEE_STATUS_COLORS,
   EMPLOYEE_STATUS_LABELS,
-  POSITION_TITLE_LABELS,
+  JOB_GRADE_LABELS,
   formatDate,
 } from "@/lib/format";
 import type { Prisma } from "@/generated/prisma/client";
@@ -164,7 +164,7 @@ export default async function EmployeesPage({
               <th className="px-4 py-2 font-medium">사번</th>
               <th className="px-4 py-2 font-medium">본/지사</th>
               <th className="px-4 py-2 font-medium">부서</th>
-              <th className="px-4 py-2 font-medium">직위</th>
+              <th className="px-4 py-2 font-medium">직급</th>
               <th className="px-4 py-2 font-medium">계약형태</th>
               <th className="px-4 py-2 font-medium">보유자격</th>
               <th className="px-4 py-2 font-medium">연락처</th>
@@ -190,7 +190,7 @@ export default async function EmployeesPage({
                 <td className="px-4 py-2 text-slate-500">{e.department.branch?.name ?? "-"}</td>
                 <td className="px-4 py-2">{e.department.name}</td>
                 <td className="px-4 py-2 text-slate-500">
-                  {e.positionTitle ? POSITION_TITLE_LABELS[e.positionTitle] : "-"}
+                  {e.jobGrade ? JOB_GRADE_LABELS[e.jobGrade] : "-"}
                 </td>
                 <td className="px-4 py-2 text-slate-500">{CONTRACT_TYPE_LABELS[e.contractType]}</td>
                 <td className="px-4 py-2 text-slate-500">
