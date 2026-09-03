@@ -15,7 +15,8 @@ async function requireHr() {
 export default async function NewCasePage() {
   await requireHr();
 
-  const [departments, activeEmployees] = await Promise.all([
+  const [branches, departments, activeEmployees] = await Promise.all([
+    prisma.branch.findMany({ orderBy: { displayOrder: "asc" } }),
     prisma.department.findMany({ orderBy: { name: "asc" } }),
     prisma.employee.findMany({
       where: { status: "ACTIVE" },
@@ -77,6 +78,7 @@ export default async function NewCasePage() {
     <div className="space-y-6">
       <h1 className="text-lg font-semibold text-slate-900">입퇴사 케이스 생성</h1>
       <NewCaseForm
+        branches={branches}
         departments={departments}
         activeEmployees={activeEmployees.map((e) => ({
           id: e.id,

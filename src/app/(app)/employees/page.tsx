@@ -13,6 +13,7 @@ export default async function EmployeesPage({
 }: {
   searchParams: Promise<{
     q?: string;
+    branchId?: string;
     departmentId?: string;
     status?: string;
     qualification?: string;
@@ -30,6 +31,8 @@ export default async function EmployeesPage({
   }
   if (params.departmentId) {
     where.departmentId = params.departmentId;
+  } else if (params.branchId) {
+    where.department = { branchId: params.branchId };
   }
   if (params.status) {
     where.status = params.status as Prisma.EnumEmployeeStatusFilter["equals"];
@@ -40,13 +43,18 @@ export default async function EmployeesPage({
     };
   }
 
-  const [employees, departments] = await Promise.all([
+  const [employees, branches, departments] = await Promise.all([
     prisma.employee.findMany({
       where,
-      include: { department: true, qualifications: true },
+      include: { department: { include: { branch: true } }, qualifications: true },
       orderBy: { name: "asc" },
     }),
-    prisma.department.findMany({ orderBy: { name: "asc" } }),
+    prisma.branch.findMany({ orderBy: { displayOrder: "asc" } }),
+    prisma.department.findMany({
+      where: { branchId: params.branchId ? params.branchId : { not: null } },
+      include: { branch: true },
+      orderBy: [{ branch: { displayOrder: "asc" } }, { name: "asc" }],
+    }),
   ]);
 
   return (
@@ -72,18 +80,41 @@ export default async function EmployeesPage({
           />
         </div>
         <div>
+          <label className="block text-xs font-medium text-slate-500">본/지사</label>
+          <select
+            name="branchId"
+            defaultValue={params.branchId}
+            className="mt-1 w-32 rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+          >
+            <option value="">전체</option>
+            {branches.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
           <label className="block text-xs font-medium text-slate-500">부서</label>
           <select
             name="departmentId"
             defaultValue={params.departmentId}
-            className="mt-1 w-40 rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+            className="mt-1 w-48 rounded-md border border-slate-300 px-2 py-1.5 text-sm"
           >
             <option value="">전체</option>
-            {departments.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.name}
-              </option>
-            ))}
+            {branches.map((b) => {
+              const deptsInBranch = departments.filter((d) => d.branchId === b.id);
+              if (deptsInBranch.length === 0) return null;
+              return (
+                <optgroup key={b.id} label={b.name}>
+                  {deptsInBranch.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.name}
+                    </option>
+                  ))}
+                </optgroup>
+              );
+            })}
           </select>
         </div>
         <div>
@@ -117,7 +148,7 @@ export default async function EmployeesPage({
         >
           검색
         </button>
-        {(params.q || params.departmentId || params.status || params.qualification) && (
+        {(params.q || params.branchId || params.departmentId || params.status || params.qualification) && (
           <Link href="/employees" className="text-sm text-slate-500 hover:underline">
             필터 초기화
           </Link>
@@ -130,6 +161,7 @@ export default async function EmployeesPage({
             <tr>
               <th className="px-4 py-2 font-medium">이름</th>
               <th className="px-4 py-2 font-medium">사번</th>
+              <th className="px-4 py-2 font-medium">본/지사</th>
               <th className="px-4 py-2 font-medium">부서</th>
               <th className="px-4 py-2 font-medium">직급</th>
               <th className="px-4 py-2 font-medium">계약형태</th>
@@ -141,7 +173,7 @@ export default async function EmployeesPage({
           <tbody className="divide-y divide-slate-100">
             {employees.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-6 text-center text-slate-400">
+                <td colSpan={9} className="px-4 py-6 text-center text-slate-400">
                   조건에 맞는 직원이 없습니다.
                 </td>
               </tr>
@@ -154,6 +186,7 @@ export default async function EmployeesPage({
                   </Link>
                 </td>
                 <td className="px-4 py-2 text-slate-500">{e.employeeNumber}</td>
+                <td className="px-4 py-2 text-slate-500">{e.department.branch?.name ?? "-"}</td>
                 <td className="px-4 py-2">{e.department.name}</td>
                 <td className="px-4 py-2 text-slate-500">{e.position ?? "-"}</td>
                 <td className="px-4 py-2 text-slate-500">{CONTRACT_TYPE_LABELS[e.contractType]}</td>

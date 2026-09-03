@@ -3,21 +3,26 @@
 import { useState } from "react";
 import { CHECKLIST_TYPE_LABELS } from "@/lib/documents";
 
-type Department = { id: string; name: string };
+type Branch = { id: string; name: string };
+type Department = { id: string; name: string; branchId: string | null };
 type Employee = { id: string; name: string; employeeNumber: string; departmentName: string };
 
 export default function NewCaseForm({
+  branches,
   departments,
   activeEmployees,
   createOnboarding,
   createOffboarding,
 }: {
+  branches: Branch[];
   departments: Department[];
   activeEmployees: Employee[];
   createOnboarding: (formData: FormData) => Promise<void>;
   createOffboarding: (formData: FormData) => Promise<void>;
 }) {
   const [mode, setMode] = useState<"ONBOARDING" | "OFFBOARDING">("ONBOARDING");
+  const [branchId, setBranchId] = useState(branches[0]?.id ?? "");
+  const departmentsInBranch = departments.filter((d) => d.branchId === branchId);
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -48,9 +53,28 @@ export default function NewCaseForm({
             <TextField name="name" label="이름" required />
             <TextField name="employeeNumber" label="사번" required />
             <div>
+              <label className="block text-xs font-medium text-slate-500">본/지사</label>
+              <select
+                value={branchId}
+                onChange={(e) => setBranchId(e.target.value)}
+                className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+              >
+                {branches.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
               <label className="block text-xs font-medium text-slate-500">부서</label>
-              <select name="departmentId" required className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm">
-                {departments.map((d) => (
+              <select
+                key={branchId}
+                name="departmentId"
+                required
+                className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+              >
+                {departmentsInBranch.map((d) => (
                   <option key={d.id} value={d.id}>
                     {d.name}
                   </option>

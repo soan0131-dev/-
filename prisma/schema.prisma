@@ -61,6 +61,18 @@ enum StepStatus {
 
 // ---------- 조직/사용자 ----------
 
+// 본사/지사 구분 (서울본사, 부산지사, 대구지사, 창원지사 등)
+model Branch {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  displayOrder Int     @default(0)
+  createdAt   DateTime @default(now())
+
+  departments Department[]
+
+  @@map("branches")
+}
+
 model Department {
   id        String   @id @default(cuid())
   name      String   @unique
@@ -68,11 +80,16 @@ model Department {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // 실제 소속 부서(감사1팀 등)는 branch가 지정되고, 결재 라우팅 전용 부서(인사팀/IT팀 등)는 branch가 없다.
+  branchId String?
+  branch   Branch? @relation(fields: [branchId], references: [id])
+
   employees     Employee[]
   users         User[]
   stepTemplates CaseStepTemplate[]
   caseSteps     CaseStep[]
 
+  @@index([branchId])
   @@map("departments")
 }
 

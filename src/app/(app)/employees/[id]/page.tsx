@@ -25,7 +25,7 @@ export default async function EmployeeDetailPage({
   const employee = await prisma.employee.findUnique({
     where: { id },
     include: {
-      department: true,
+      department: { include: { branch: true } },
       qualifications: { orderBy: { acquiredDate: "asc" } },
       cases: { orderBy: { initiatedAt: "desc" } },
     },
@@ -46,6 +46,7 @@ export default async function EmployeeDetailPage({
             </span>
           </div>
           <p className="mt-1 text-sm text-slate-500">
+            {employee.department.branch ? `${employee.department.branch.name} · ` : ""}
             {employee.department.name} · {employee.position ?? "직급 미지정"} · 사번 {employee.employeeNumber}
           </p>
         </div>
