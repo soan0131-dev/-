@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { startCase } from "@/lib/workflow";
+import type { JobGrade, PositionTitle } from "@/generated/prisma/client";
 import NewCaseForm from "./NewCaseForm";
 
 async function requireHr() {
@@ -12,8 +13,13 @@ async function requireHr() {
   return session;
 }
 
-export default async function NewCasePage() {
+export default async function NewCasePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
   await requireHr();
+  const params = await searchParams;
 
   const [branches, departments, activeEmployees] = await Promise.all([
     prisma.branch.findMany({ orderBy: { displayOrder: "asc" } }),
@@ -29,13 +35,35 @@ export default async function NewCasePage() {
     "use server";
     const session = await requireHr();
 
+    const name = (formData.get("name") as string)?.trim();
+    const employeeNumber = (formData.get("employeeNumber") as string)?.trim();
+    const departmentId = formData.get("departmentId") as string;
+    const hireDateRaw = formData.get("hireDate") as string;
+    const checklistType = formData.get("checklistType") as
+      | "GENERAL"
+      | "EXPERIENCED_CPA"
+      | "SIMPLIFIED"
+      | "";
+
+    if (!name || !employeeNumber || !departmentId || !hireDateRaw || !checklistType) {
+      redirect(
+        `/cases/new?error=${encodeURIComponent(
+          "이름, 부서, 입사(예정)일, 제출서류 체크리스트 유형은 필수 입력 항목입니다."
+        )}`
+      );
+    }
+
+    const positionTitle = ((formData.get("positionTitle") as string) || null) as PositionTitle | null;
+    const jobGrade = ((formData.get("jobGrade") as string) || null) as JobGrade | null;
+
     const employee = await prisma.employee.create({
       data: {
-        name: formData.get("name") as string,
-        employeeNumber: formData.get("employeeNumber") as string,
-        departmentId: formData.get("departmentId") as string,
-        position: (formData.get("position") as string) || null,
-        hireDate: new Date(formData.get("hireDate") as string),
+        name,
+        employeeNumber,
+        departmentId,
+        positionTitle,
+        jobGrade,
+        hireDate: new Date(hireDateRaw),
         yearsOfExperience: Number(formData.get("yearsOfExperience") ?? 0),
         email: (formData.get("email") as string) || null,
         phone: (formData.get("phone") as string) || null,
@@ -48,10 +76,7 @@ export default async function NewCasePage() {
       type: "ONBOARDING",
       initiatedById: session.user.id,
       note: (formData.get("note") as string) || undefined,
-      checklistType: formData.get("checklistType") as
-        | "GENERAL"
-        | "EXPERIENCED_CPA"
-        | "SIMPLIFIED",
+      checklistType,
     });
 
     redirect(`/cases/${employeeCase.id}`);
@@ -88,6 +113,7 @@ export default async function NewCasePage() {
         }))}
         createOnboarding={createOnboarding}
         createOffboarding={createOffboarding}
+        errorMessage={params.error}
       />
     </div>
   );

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { CHECKLIST_TYPE_LABELS } from "@/lib/documents";
+import { JOB_GRADE_LABELS, POSITION_TITLE_LABELS } from "@/lib/format";
 
 type Branch = { id: string; name: string };
 type Department = { id: string; name: string; branchId: string | null };
@@ -13,12 +14,14 @@ export default function NewCaseForm({
   activeEmployees,
   createOnboarding,
   createOffboarding,
+  errorMessage,
 }: {
   branches: Branch[];
   departments: Department[];
   activeEmployees: Employee[];
   createOnboarding: (formData: FormData) => Promise<void>;
   createOffboarding: (formData: FormData) => Promise<void>;
+  errorMessage?: string;
 }) {
   const [mode, setMode] = useState<"ONBOARDING" | "OFFBOARDING">("ONBOARDING");
   const [branchId, setBranchId] = useState(branches[0]?.id ?? "");
@@ -46,6 +49,10 @@ export default function NewCaseForm({
           퇴사자 처리
         </button>
       </div>
+
+      {errorMessage && (
+        <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{errorMessage}</p>
+      )}
 
       {mode === "ONBOARDING" ? (
         <form action={createOnboarding} className="space-y-4 rounded-lg border border-slate-200 bg-white p-5">
@@ -81,7 +88,36 @@ export default function NewCaseForm({
                 ))}
               </select>
             </div>
-            <TextField name="position" label="직급" />
+            <div>
+              <label className="block text-xs font-medium text-slate-500">직위</label>
+              <select
+                name="positionTitle"
+                defaultValue=""
+                className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+              >
+                <option value="">선택안함</option>
+                {Object.entries(POSITION_TITLE_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-500">직급</label>
+              <select
+                name="jobGrade"
+                defaultValue=""
+                className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+              >
+                <option value="">선택안함</option>
+                {Object.entries(JOB_GRADE_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </div>
             <TextField name="hireDate" label="입사(예정)일" type="date" required />
             <TextField name="yearsOfExperience" label="경력연수(입사 전)" type="number" defaultValue="0" />
             <TextField name="email" label="사내 이메일" type="email" />

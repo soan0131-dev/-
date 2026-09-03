@@ -2,7 +2,13 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { CONTRACT_TYPE_LABELS, formatDate } from "@/lib/format";
+import type { JobGrade, PositionTitle } from "@/generated/prisma/client";
+import {
+  CONTRACT_TYPE_LABELS,
+  JOB_GRADE_LABELS,
+  POSITION_TITLE_LABELS,
+  formatDate,
+} from "@/lib/format";
 
 async function requireEditor() {
   const session = await auth();
@@ -33,7 +39,8 @@ export default async function EmployeeEditPage({
     await prisma.employee.update({
       where: { id },
       data: {
-        position: (formData.get("position") as string) || null,
+        positionTitle: ((formData.get("positionTitle") as string) || null) as PositionTitle | null,
+        jobGrade: ((formData.get("jobGrade") as string) || null) as JobGrade | null,
         phone: (formData.get("phone") as string) || null,
         email: (formData.get("email") as string) || null,
         personalEmail: (formData.get("personalEmail") as string) || null,
@@ -85,12 +92,34 @@ export default async function EmployeeEditPage({
       <form action={updateEmployee} className="space-y-4 rounded-lg border border-slate-200 bg-white p-5">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-medium text-slate-500">직급</label>
-            <input
-              name="position"
-              defaultValue={employee.position ?? ""}
+            <label className="block text-xs font-medium text-slate-500">직위</label>
+            <select
+              name="positionTitle"
+              defaultValue={employee.positionTitle ?? ""}
               className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
-            />
+            >
+              <option value="">선택안함</option>
+              {Object.entries(POSITION_TITLE_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-500">직급</label>
+            <select
+              name="jobGrade"
+              defaultValue={employee.jobGrade ?? ""}
+              className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+            >
+              <option value="">선택안함</option>
+              {Object.entries(JOB_GRADE_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-500">계약형태</label>

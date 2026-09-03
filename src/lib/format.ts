@@ -60,6 +60,41 @@ export const CONTRACT_TYPE_LABELS: Record<string, string> = {
   INTERN: "인턴",
 };
 
+// 순서 = 실제 표시 순서
+export const POSITION_TITLE_LABELS: Record<string, string> = {
+  CHAIRMAN: "회장",
+  VICE_CHAIRMAN: "부회장",
+  CEO: "대표이사",
+  PRESIDENT: "대표",
+  VICE_PRESIDENT: "부대표",
+  SENIOR_ADVISOR_VP: "전문위원 부대표",
+  PARTNER: "파트너",
+  EXECUTIVE_DIRECTOR: "전무이사",
+  EXECUTIVE_OFFICER: "전무",
+  MANAGING_DIRECTOR: "상무이사",
+  MANAGING_OFFICER: "상무",
+  STANDING_ADVISOR: "상임고문",
+  NON_STANDING_ADVISOR: "비상임고문",
+  DIRECTOR: "이사",
+  MANAGER: "MANAGER",
+  SENIOR: "SENIOR",
+  ASSOCIATE: "ASSOCIATE",
+  CHIEF_STAFF: "책임",
+  SENIOR_STAFF: "선임",
+  STAFF: "담당",
+  INTERN: "인턴",
+  PENDING: "확인중",
+};
+
+// 순서 = 실제 표시 순서
+export const JOB_GRADE_LABELS: Record<string, string> = {
+  PARTNER_KICPA_STAFF_DIRECTOR_REGISTERED: "파트너-KICPA(사원,이사,등록)",
+  PARTNER_KICPA_STAFF_REGISTERED: "파트너-KICPA(사원,등록)",
+  PARTNER_AICPA_STAFF: "파트너-AICPA(사원)",
+  PARTNER_TAX_ACCOUNTANT: "파트너-세무사",
+  KICPA_REGISTERED: "KICPA(등록)",
+};
+
 export function formatDate(date: Date | string | null | undefined): string {
   if (!date) return "-";
   const d = typeof date === "string" ? new Date(date) : date;

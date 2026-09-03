@@ -9,6 +9,8 @@ import {
   CONTRACT_TYPE_LABELS,
   EMPLOYEE_STATUS_COLORS,
   EMPLOYEE_STATUS_LABELS,
+  JOB_GRADE_LABELS,
+  POSITION_TITLE_LABELS,
   formatDate,
   tenureYears,
 } from "@/lib/format";
@@ -47,7 +49,9 @@ export default async function EmployeeDetailPage({
           </div>
           <p className="mt-1 text-sm text-slate-500">
             {employee.department.branch ? `${employee.department.branch.name} · ` : ""}
-            {employee.department.name} · {employee.position ?? "직급 미지정"} · 사번 {employee.employeeNumber}
+            {employee.department.name} ·{" "}
+            {employee.positionTitle ? POSITION_TITLE_LABELS[employee.positionTitle] : "직위 미지정"} · 사번{" "}
+            {employee.employeeNumber}
           </p>
         </div>
         {canEdit && (
@@ -65,6 +69,10 @@ export default async function EmployeeDetailPage({
           <h2 className="text-sm font-semibold text-slate-900">기본 인적사항</h2>
           <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
             <Field label="계약형태" value={CONTRACT_TYPE_LABELS[employee.contractType]} />
+            <Field
+              label="직급"
+              value={employee.jobGrade ? JOB_GRADE_LABELS[employee.jobGrade] : "-"}
+            />
             <Field label="입사일" value={formatDate(employee.hireDate)} />
             <Field label="근속연수" value={`${tenureYears(employee.hireDate)}년`} />
             <Field label="경력연수(입사 전)" value={`${employee.yearsOfExperience}년`} />
