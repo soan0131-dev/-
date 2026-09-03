@@ -102,6 +102,7 @@ export default async function EmployeeDetailPage({
                   : "-"
               }
             />
+            <Field label="생년월일" value={formatDate(employee.birthDate)} />
             <Field label="입사일" value={formatDate(employee.hireDate)} />
             <Field label="근속연수" value={`${tenureYears(employee.hireDate)}년`} />
             <Field label="경력연수(입사 전)" value={`${employee.yearsOfExperience}년`} />

@@ -108,7 +108,7 @@ enum StepStatus {
 
 // ---------- 조직/사용자 ----------
 
-// 본사/지사 구분 (서울본사, 부산지사, 대구지사, 창원지사 등)
+// 본부 구분 (서울본사, 서울1본부, 서울2본부, 서울4본부, 서울6팀, 해성공통, 부산지사, 대구지사, 창원지사 등)
 model Branch {
   id           String   @id @default(cuid())
   name         String   @unique
@@ -178,6 +178,7 @@ model Employee {
   jobGrade            JobGrade? // 직급
   partnerType         PartnerType? // 파트너 유형 (직급=PARTNER일 때만 의미있음)
   qualificationGrades QualificationGrade[] // 자격 (중복 선택 가능)
+  birthDate           DateTime?
   hireDate            DateTime
   terminationDate     DateTime?
   phone               String?

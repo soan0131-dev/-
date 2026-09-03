@@ -98,7 +98,7 @@ export default async function EmployeesPage({
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-slate-500">본/지사</label>
+          <label className="block text-xs font-medium text-slate-500">본부</label>
           <select
             name="branchId"
             defaultValue={params.branchId}
@@ -179,7 +179,7 @@ export default async function EmployeesPage({
             <tr>
               <th className="px-4 py-2 font-medium">이름</th>
               <th className="px-4 py-2 font-medium">사번</th>
-              <th className="px-4 py-2 font-medium">본/지사</th>
+              <th className="px-4 py-2 font-medium">본부</th>
               <th className="px-4 py-2 font-medium">부서</th>
               <th className="px-4 py-2 font-medium">직급</th>
               <th className="px-4 py-2 font-medium">자격</th>

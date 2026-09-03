@@ -65,7 +65,7 @@ export default function NewCaseForm({
             <TextField name="name" label="이름" required />
             <TextField name="employeeNumber" label="사번" required />
             <div>
-              <label className="block text-xs font-medium text-slate-500">본/지사</label>
+              <label className="block text-xs font-medium text-slate-500">본부</label>
               <select
                 value={branchId}
                 onChange={(e) => setBranchId(e.target.value)}
@@ -108,6 +108,7 @@ export default function NewCaseForm({
               </select>
             </div>
             <JobGradeFields />
+            <TextField name="birthDate" label="생년월일" type="date" />
             <TextField name="hireDate" label="입사(예정)일" type="date" required />
             <TextField name="email" label="사내 이메일" type="email" />
             <TextField name="phone" label="연락처" />

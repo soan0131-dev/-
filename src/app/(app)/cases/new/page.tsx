@@ -60,6 +60,7 @@ export default async function NewCasePage({
       jobGrade === "PARTNER" ? (((formData.get("partnerType") as string) || null) as PartnerType | null) : null;
     const qualificationGrades = formData.getAll("qualificationGrades") as QualificationGrade[];
     const contractType = ((formData.get("contractType") as string) || "REGULAR") as ContractType;
+    const birthDateRaw = formData.get("birthDate") as string;
 
     const employee = await prisma.employee.create({
       data: {
@@ -70,6 +71,7 @@ export default async function NewCasePage({
         jobGrade,
         partnerType,
         qualificationGrades,
+        birthDate: birthDateRaw ? new Date(birthDateRaw) : null,
         hireDate: new Date(hireDateRaw),
         email: (formData.get("email") as string) || null,
         phone: (formData.get("phone") as string) || null,

@@ -14,7 +14,7 @@ const DEPARTMENTS = [
   { code: "FIN", name: "재무팀" },
 ];
 
-// 실제 조직도: 본/지사 + 소속 부서 (부서코드 기준)
+// 실제 조직도: 본부 + 소속 부서 (부서코드 기준)
 const REAL_ORG = [
   { branch: "서울본사", code: "1010", name: "법인 대표실" },
   { branch: "서울본사", code: "1020", name: "법인 품질관리실" },
@@ -26,29 +26,29 @@ const REAL_ORG = [
   { branch: "서울본사", code: "1061", name: "법인 금융본부2" },
   { branch: "서울본사", code: "1080", name: "법인 국제조세" },
   { branch: "서울본사", code: "1095", name: "법인 재무" },
-  { branch: "서울본사", code: "1110", name: "서울1감사1" },
-  { branch: "서울본사", code: "1120", name: "서울1FAS1" },
-  { branch: "서울본사", code: "1130", name: "서울1BSO1" },
-  { branch: "서울본사", code: "1140", name: "서울1공통1" },
-  { branch: "서울본사", code: "1150", name: "서울1감사2" },
-  { branch: "서울본사", code: "1170", name: "서울1기업금융4" },
-  { branch: "서울본사", code: "1210", name: "서울2세무" },
-  { branch: "서울본사", code: "1220", name: "서울2Global Risk관리팀" },
-  { branch: "서울본사", code: "1240", name: "서울2공통" },
-  { branch: "서울본사", code: "1250", name: "서울2회계" },
-  { branch: "서울본사", code: "1260", name: "서울2PS" },
-  { branch: "서울본사", code: "1510", name: "서울4감사1-1" },
-  { branch: "서울본사", code: "1520", name: "서울4감사1-2" },
-  { branch: "서울본사", code: "1530", name: "서울4감사1-3" },
-  { branch: "서울본사", code: "1540", name: "서울4공통1" },
-  { branch: "서울본사", code: "1571", name: "서울4세무2" },
-  { branch: "서울본사", code: "1556", name: "서울4감사3" },
-  { branch: "서울본사", code: "1590", name: "서울4감사4" },
-  { branch: "서울본사", code: "1555", name: "서울4감사5" },
-  { branch: "서울본사", code: "1710", name: "서울6감사1" },
-  { branch: "서울본사", code: "1740", name: "서울6감사2" },
-  { branch: "서울본사", code: "1810", name: "해성BSO" },
   { branch: "서울본사", code: "2910", name: "서울경영기획본부" },
+  { branch: "서울1본부", code: "1110", name: "서울1감사1" },
+  { branch: "서울1본부", code: "1120", name: "서울1FAS1" },
+  { branch: "서울1본부", code: "1130", name: "서울1BSO1" },
+  { branch: "서울1본부", code: "1140", name: "서울1공통1" },
+  { branch: "서울1본부", code: "1150", name: "서울1감사2" },
+  { branch: "서울1본부", code: "1170", name: "서울1기업금융4" },
+  { branch: "서울2본부", code: "1210", name: "서울2세무" },
+  { branch: "서울2본부", code: "1220", name: "서울2Global Risk관리팀" },
+  { branch: "서울2본부", code: "1240", name: "서울2공통" },
+  { branch: "서울2본부", code: "1250", name: "서울2회계" },
+  { branch: "서울2본부", code: "1260", name: "서울2PS" },
+  { branch: "서울4본부", code: "1510", name: "서울4감사1-1" },
+  { branch: "서울4본부", code: "1520", name: "서울4감사1-2" },
+  { branch: "서울4본부", code: "1530", name: "서울4감사1-3" },
+  { branch: "서울4본부", code: "1540", name: "서울4공통1" },
+  { branch: "서울4본부", code: "1571", name: "서울4세무2" },
+  { branch: "서울4본부", code: "1556", name: "서울4감사3" },
+  { branch: "서울4본부", code: "1590", name: "서울4감사4" },
+  { branch: "서울4본부", code: "1555", name: "서울4감사5" },
+  { branch: "서울6팀", code: "1710", name: "서울6감사1" },
+  { branch: "서울6팀", code: "1740", name: "서울6감사2" },
+  { branch: "해성공통", code: "1810", name: "해성BSO" },
   { branch: "부산지사", code: "3110", name: "부산1감사" },
   { branch: "부산지사", code: "3120", name: "부산1세무" },
   { branch: "부산지사", code: "3130", name: "부산1공통" },
@@ -60,7 +60,17 @@ const REAL_ORG = [
   { branch: "창원지사", code: "5130", name: "창원1공통" },
 ];
 
-const BRANCHES = ["서울본사", "부산지사", "대구지사", "창원지사"];
+const BRANCHES = [
+  "서울본사",
+  "서울1본부",
+  "서울2본부",
+  "서울4본부",
+  "서울6팀",
+  "해성공통",
+  "부산지사",
+  "대구지사",
+  "창원지사",
+];
 
 async function main() {
   const departments = new Map<string, string>();

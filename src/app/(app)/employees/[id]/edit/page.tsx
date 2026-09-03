@@ -35,6 +35,7 @@ export default async function EmployeeEditPage({
     const jobGrade = ((formData.get("jobGrade") as string) || null) as JobGrade | null;
     const status = formData.get("status") as EmployeeStatus;
     const terminationDateRaw = formData.get("terminationDate") as string;
+    const birthDateRaw = formData.get("birthDate") as string;
 
     await prisma.employee.update({
       where: { id },
@@ -50,6 +51,7 @@ export default async function EmployeeEditPage({
         email: (formData.get("email") as string) || null,
         personalEmail: (formData.get("personalEmail") as string) || null,
         yearsOfExperience: Number(formData.get("yearsOfExperience") ?? 0),
+        birthDate: birthDateRaw ? new Date(birthDateRaw) : null,
         terminationDate: terminationDateRaw ? new Date(terminationDateRaw) : null,
       },
     });
@@ -147,6 +149,15 @@ export default async function EmployeeEditPage({
               name="personalEmail"
               type="email"
               defaultValue={employee.personalEmail ?? ""}
+              className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-500">생년월일</label>
+            <input
+              name="birthDate"
+              type="date"
+              defaultValue={employee.birthDate ? employee.birthDate.toISOString().slice(0, 10) : ""}
               className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
             />
           </div>
