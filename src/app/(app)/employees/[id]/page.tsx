@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import DeleteEmployeeButton from "@/components/DeleteEmployeeButton";
 import {
   CASE_STATUS_COLORS,
   CASE_STATUS_LABELS,
@@ -36,6 +37,16 @@ export default async function EmployeeDetailPage({
 
   if (!employee) notFound();
 
+  async function deleteEmployee() {
+    "use server";
+    const session = await auth();
+    if (!session || (session.user.role !== "ADMIN" && session.user.role !== "HR")) {
+      redirect("/");
+    }
+    await prisma.employee.delete({ where: { id } });
+    redirect("/employees");
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -56,12 +67,15 @@ export default async function EmployeeDetailPage({
           </p>
         </div>
         {canEdit && (
-          <Link
-            href={`/employees/${employee.id}/edit`}
-            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50"
-          >
-            정보 수정
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href={`/employees/${employee.id}/edit`}
+              className="rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50"
+            >
+              정보 수정
+            </Link>
+            <DeleteEmployeeButton employeeName={employee.name} deleteAction={deleteEmployee} />
+          </div>
         )}
       </div>
 

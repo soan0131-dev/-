@@ -156,7 +156,7 @@ model User {
 
   // 재직 중인 직원과 연결된 계정인 경우 (본인 케이스 조회 등에 활용 가능)
   employeeId String?   @unique
-  employee   Employee? @relation(fields: [employeeId], references: [id])
+  employee   Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
 
   initiatedCases EmployeeCase[] @relation("CaseInitiator")
   approvedSteps  CaseStep[]     @relation("StepApprover")
@@ -225,7 +225,7 @@ model EmployeeCase {
   completedAt   DateTime?
 
   employeeId String
-  employee   Employee @relation(fields: [employeeId], references: [id])
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
   initiatedById String
   initiatedBy   User   @relation("CaseInitiator", fields: [initiatedById], references: [id])

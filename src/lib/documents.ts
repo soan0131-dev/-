@@ -1,9 +1,9 @@
 // 성현회계법인 입사 제출서류 안내 기준 (2026-09 정리)
 
 export const CHECKLIST_TYPE_LABELS: Record<string, string> = {
-  GENERAL: "일반 정규직",
-  EXPERIENCED_CPA: "경력직(공인회계사)",
-  SIMPLIFIED: "간소화 대상(계약직/인턴 등)",
+  GENERAL: "준전문직",
+  EXPERIENCED_CPA: "전문직",
+  SIMPLIFIED: "계약직",
 };
 
 export type DocumentGroup = { category: string; items: string[] };

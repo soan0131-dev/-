@@ -96,21 +96,21 @@ export default function NewCaseForm({
             <TextField name="hireDate" label="입사(예정)일" type="date" required />
             <TextField name="email" label="사내 이메일" type="email" />
             <TextField name="phone" label="연락처" />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-500">제출서류 체크리스트 유형</label>
-            <select
-              name="checklistType"
-              required
-              defaultValue="GENERAL"
-              className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
-            >
-              {Object.entries(CHECKLIST_TYPE_LABELS).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
+            <div>
+              <label className="block text-xs font-medium text-slate-500">제출서류 체크리스트 유형</label>
+              <select
+                name="checklistType"
+                required
+                defaultValue="GENERAL"
+                className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+              >
+                {Object.entries(CHECKLIST_TYPE_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
           <TextArea name="note" label="비고" />
           <button type="submit" className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700">
