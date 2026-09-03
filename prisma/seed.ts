@@ -41,11 +41,10 @@ const REAL_ORG = [
   { branch: "서울본사", code: "1520", name: "서울4감사1-2" },
   { branch: "서울본사", code: "1530", name: "서울4감사1-3" },
   { branch: "서울본사", code: "1540", name: "서울4공통1" },
-  { branch: "서울본사", code: "1555", name: "서울4감사5" },
-  { branch: "서울본사", code: "1556", name: "서울4감사3" },
   { branch: "서울본사", code: "1571", name: "서울4세무2" },
-  { branch: "서울본사", code: "1579", name: "서울4공통2" },
+  { branch: "서울본사", code: "1556", name: "서울4감사3" },
   { branch: "서울본사", code: "1590", name: "서울4감사4" },
+  { branch: "서울본사", code: "1555", name: "서울4감사5" },
   { branch: "서울본사", code: "1710", name: "서울6감사1" },
   { branch: "서울본사", code: "1740", name: "서울6감사2" },
   { branch: "서울본사", code: "1810", name: "해성BSO" },
@@ -95,6 +94,28 @@ async function main() {
         displayOrder: index,
       },
     });
+  }
+
+  // 조직도에서 제외된 부서(예: 서울4공통2)는 참조하는 데이터가 없을 때만 정리 삭제한다.
+  const activeCodes = new Set(REAL_ORG.map((org) => org.code));
+  const staleDepartments = await prisma.department.findMany({
+    where: { branchId: { not: null }, code: { notIn: [...activeCodes] } },
+  });
+  for (const dept of staleDepartments) {
+    const [employeeCount, userCount, stepTemplateCount, caseStepCount] = await Promise.all([
+      prisma.employee.count({ where: { departmentId: dept.id } }),
+      prisma.user.count({ where: { departmentId: dept.id } }),
+      prisma.caseStepTemplate.count({ where: { departmentId: dept.id } }),
+      prisma.caseStep.count({ where: { departmentId: dept.id } }),
+    ]);
+    if (employeeCount + userCount + stepTemplateCount + caseStepCount > 0) {
+      console.warn(
+        `부서 삭제 건너뜀 (참조중): ${dept.name}(${dept.code}) - 직원 ${employeeCount}, 계정 ${userCount}, 템플릿 ${stepTemplateCount}, 케이스단계 ${caseStepCount}`
+      );
+      continue;
+    }
+    await prisma.department.delete({ where: { id: dept.id } });
+    console.log(`부서 삭제됨: ${dept.name}(${dept.code})`);
   }
 
   const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? "ChangeMe123!";
