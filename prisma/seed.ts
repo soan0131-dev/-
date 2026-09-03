@@ -84,11 +84,16 @@ async function main() {
     branchIds.set(name, created.id);
   }
 
-  for (const org of REAL_ORG) {
+  for (const [index, org] of REAL_ORG.entries()) {
     await prisma.department.upsert({
       where: { code: org.code },
-      update: { name: org.name, branchId: branchIds.get(org.branch) },
-      create: { code: org.code, name: org.name, branchId: branchIds.get(org.branch) },
+      update: { name: org.name, branchId: branchIds.get(org.branch), displayOrder: index },
+      create: {
+        code: org.code,
+        name: org.name,
+        branchId: branchIds.get(org.branch),
+        displayOrder: index,
+      },
     });
   }
 

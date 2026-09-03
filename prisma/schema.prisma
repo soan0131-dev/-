@@ -74,11 +74,12 @@ model Branch {
 }
 
 model Department {
-  id        String   @id @default(cuid())
-  name      String   @unique
-  code      String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String   @id @default(cuid())
+  name         String   @unique
+  code         String   @unique
+  displayOrder Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   // 실제 소속 부서(감사1팀 등)는 branch가 지정되고, 결재 라우팅 전용 부서(인사팀/IT팀 등)는 branch가 없다.
   branchId String?

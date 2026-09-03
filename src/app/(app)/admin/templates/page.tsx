@@ -19,7 +19,7 @@ export default async function AdminTemplatesPage() {
       orderBy: [{ type: "asc" }, { sequenceGroup: "asc" }, { displayOrder: "asc" }],
     }),
     // 결재 라우팅 전용 부서만 노출 (branchId가 없는, 실제 조직도가 아닌 부서)
-    prisma.department.findMany({ where: { branchId: null }, orderBy: { name: "asc" } }),
+    prisma.department.findMany({ where: { branchId: null }, orderBy: { displayOrder: "asc" } }),
   ]);
 
   async function createTemplate(formData: FormData) {

@@ -17,7 +17,7 @@ export default async function AdminUsersPage() {
   const [users, departments] = await Promise.all([
     prisma.user.findMany({ include: { department: true }, orderBy: { createdAt: "asc" } }),
     // 결재 라우팅 전용 부서만 노출 (HR/DEPT_APPROVER 계정은 이 부서 기준으로 승인 권한이 결정됨)
-    prisma.department.findMany({ where: { branchId: null }, orderBy: { name: "asc" } }),
+    prisma.department.findMany({ where: { branchId: null }, orderBy: { displayOrder: "asc" } }),
   ]);
 
   async function createUser(formData: FormData) {

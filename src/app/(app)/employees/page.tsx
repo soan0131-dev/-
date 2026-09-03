@@ -53,7 +53,7 @@ export default async function EmployeesPage({
     prisma.department.findMany({
       where: { branchId: params.branchId ? params.branchId : { not: null } },
       include: { branch: true },
-      orderBy: [{ branch: { displayOrder: "asc" } }, { name: "asc" }],
+      orderBy: [{ branch: { displayOrder: "asc" } }, { displayOrder: "asc" }],
     }),
   ]);
 

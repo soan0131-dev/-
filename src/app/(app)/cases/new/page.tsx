@@ -17,7 +17,7 @@ export default async function NewCasePage() {
 
   const [branches, departments, activeEmployees] = await Promise.all([
     prisma.branch.findMany({ orderBy: { displayOrder: "asc" } }),
-    prisma.department.findMany({ orderBy: { name: "asc" } }),
+    prisma.department.findMany({ orderBy: { displayOrder: "asc" } }),
     prisma.employee.findMany({
       where: { status: "ACTIVE" },
       include: { department: true },
