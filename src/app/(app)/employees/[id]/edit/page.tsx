@@ -2,8 +2,8 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import type { JobGrade, PartnerType, QualificationGrade } from "@/generated/prisma/client";
-import { CONTRACT_TYPE_LABELS, formatDate } from "@/lib/format";
+import type { EmployeeStatus, JobGrade, PartnerType, QualificationGrade } from "@/generated/prisma/client";
+import { CONTRACT_TYPE_LABELS, EMPLOYEE_STATUS_LABELS, formatDate } from "@/lib/format";
 import JobGradeFields from "@/components/JobGradeFields";
 
 async function requireEditor() {
@@ -33,10 +33,13 @@ export default async function EmployeeEditPage({
     await requireEditor();
 
     const jobGrade = ((formData.get("jobGrade") as string) || null) as JobGrade | null;
+    const status = formData.get("status") as EmployeeStatus;
+    const terminationDateRaw = formData.get("terminationDate") as string;
 
     await prisma.employee.update({
       where: { id },
       data: {
+        status,
         jobGrade,
         partnerType:
           jobGrade === "PARTNER"
@@ -47,6 +50,7 @@ export default async function EmployeeEditPage({
         email: (formData.get("email") as string) || null,
         personalEmail: (formData.get("personalEmail") as string) || null,
         yearsOfExperience: Number(formData.get("yearsOfExperience") ?? 0),
+        terminationDate: terminationDateRaw ? new Date(terminationDateRaw) : null,
       },
     });
 
@@ -93,6 +97,20 @@ export default async function EmployeeEditPage({
 
       <form action={updateEmployee} className="space-y-4 rounded-lg border border-slate-200 bg-white p-5">
         <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-medium text-slate-500">재직상태</label>
+            <select
+              name="status"
+              defaultValue={employee.status}
+              className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+            >
+              {Object.entries(EMPLOYEE_STATUS_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </div>
           <JobGradeFields
             defaultJobGrade={employee.jobGrade}
             defaultPartnerType={employee.partnerType}
@@ -139,6 +157,15 @@ export default async function EmployeeEditPage({
               type="number"
               min={0}
               defaultValue={employee.yearsOfExperience}
+              className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-500">퇴사일</label>
+            <input
+              name="terminationDate"
+              type="date"
+              defaultValue={employee.terminationDate ? employee.terminationDate.toISOString().slice(0, 10) : ""}
               className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
             />
           </div>
