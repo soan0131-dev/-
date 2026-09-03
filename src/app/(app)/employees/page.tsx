@@ -79,6 +79,12 @@ export default async function EmployeesPage({
             엑셀 다운로드
           </a>
           <Link
+            href="/employees/bulk-upload"
+            className="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            일괄 등록(엑셀 업로드)
+          </Link>
+          <Link
             href="/cases/new"
             className="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-700"
           >
