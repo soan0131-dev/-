@@ -21,11 +21,13 @@ export default async function NewCasePage({
   await requireHr();
   const params = await searchParams;
 
-  const [branches, departments, activeEmployees] = await Promise.all([
+  const [branches, departments, offboardCandidates] = await Promise.all([
     prisma.branch.findMany({ orderBy: { displayOrder: "asc" } }),
     prisma.department.findMany({ orderBy: { displayOrder: "asc" } }),
     prisma.employee.findMany({
-      where: { status: "ACTIVE" },
+      // 이미 퇴사 처리되었거나 퇴사 절차가 진행중인 직원은 제외하고,
+      // 그 외 전직원 현황판에 있는 모든 재직 상태(재직중/휴직/입사예정 등)를 검색 대상에 포함한다.
+      where: { status: { notIn: ["TERMINATED", "PENDING_EXIT"] } },
       include: { department: true },
       orderBy: { name: "asc" },
     }),
@@ -114,7 +116,7 @@ export default async function NewCasePage({
       <NewCaseForm
         branches={branches}
         departments={departments}
-        activeEmployees={activeEmployees.map((e) => ({
+        activeEmployees={offboardCandidates.map((e) => ({
           id: e.id,
           name: e.name,
           employeeNumber: e.employeeNumber,
