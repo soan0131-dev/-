@@ -5,6 +5,7 @@ import { CHECKLIST_TYPE_LABELS } from "@/lib/documents";
 import { CONTRACT_TYPE_LABELS } from "@/lib/format";
 import JobGradeFields from "@/components/JobGradeFields";
 import EmployeeSearchSelect from "@/components/EmployeeSearchSelect";
+import DateField from "@/components/DateField";
 
 const OFFBOARDING_REASONS = ["개인사유", "이직", "권고사직", "기타"];
 
@@ -108,8 +109,8 @@ export default function NewCaseForm({
               </select>
             </div>
             <JobGradeFields />
-            <TextField name="birthDate" label="생년월일" type="date" />
-            <TextField name="hireDate" label="입사(예정)일" type="date" required />
+            <DateField name="birthDate" label="생년월일" />
+            <DateField name="hireDate" label="입사(예정)일" required />
             <TextField name="email" label="사내 이메일" type="email" />
             <TextField name="phone" label="연락처" />
             <div>

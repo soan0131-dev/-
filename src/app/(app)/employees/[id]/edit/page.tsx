@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import type { EmployeeStatus, JobGrade, PartnerType, QualificationGrade } from "@/generated/prisma/client";
 import { CONTRACT_TYPE_LABELS, EMPLOYEE_STATUS_LABELS, formatDate } from "@/lib/format";
 import JobGradeFields from "@/components/JobGradeFields";
+import DateField from "@/components/DateField";
 
 async function requireEditor() {
   const session = await auth();
@@ -152,15 +153,11 @@ export default async function EmployeeEditPage({
               className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
             />
           </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-500">생년월일</label>
-            <input
-              name="birthDate"
-              type="date"
-              defaultValue={employee.birthDate ? employee.birthDate.toISOString().slice(0, 10) : ""}
-              className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
-            />
-          </div>
+          <DateField
+            name="birthDate"
+            label="생년월일"
+            defaultValue={employee.birthDate ? employee.birthDate.toISOString().slice(0, 10) : ""}
+          />
           <div>
             <label className="block text-xs font-medium text-slate-500">경력연수(입사 전)</label>
             <input
