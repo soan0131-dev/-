@@ -100,9 +100,9 @@ export default function NewCaseForm({
                 defaultValue="REGULAR"
                 className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
               >
-                {Object.entries(CONTRACT_TYPE_LABELS).map(([value, label]) => (
+                {(["REGULAR", "CONTRACT"] as const).map((value) => (
                   <option key={value} value={value}>
-                    {label}
+                    {CONTRACT_TYPE_LABELS[value]}
                   </option>
                 ))}
               </select>
