@@ -170,22 +170,22 @@ model User {
 // ---------- 전직원 현황판 (마스터 데이터) ----------
 
 model Employee {
-  id                 String              @id @default(cuid())
-  employeeNumber     String              @unique
-  name               String
-  status             EmployeeStatus      @default(PENDING_ENTRY)
-  contractType       ContractType        @default(REGULAR)
-  jobGrade           JobGrade? // 직급
-  partnerType        PartnerType? // 파트너 유형 (직급=PARTNER일 때만 의미있음)
-  qualificationGrade QualificationGrade? // 자격
-  hireDate           DateTime
-  terminationDate    DateTime?
-  phone              String?
-  email              String?             @unique
-  personalEmail      String?
-  yearsOfExperience  Int                 @default(0) // 입사 전 경력연수 (근속연수는 hireDate로 계산)
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
+  id                  String               @id @default(cuid())
+  employeeNumber      String               @unique
+  name                String
+  status              EmployeeStatus       @default(PENDING_ENTRY)
+  contractType        ContractType         @default(REGULAR)
+  jobGrade            JobGrade? // 직급
+  partnerType         PartnerType? // 파트너 유형 (직급=PARTNER일 때만 의미있음)
+  qualificationGrades QualificationGrade[] // 자격 (중복 선택 가능)
+  hireDate            DateTime
+  terminationDate     DateTime?
+  phone               String?
+  email               String?              @unique
+  personalEmail       String?
+  yearsOfExperience   Int                  @default(0) // 입사 전 경력연수 (근속연수는 hireDate로 계산)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
 
   departmentId String
   department   Department @relation(fields: [departmentId], references: [id])

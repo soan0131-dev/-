@@ -82,7 +82,11 @@ export default async function EmployeeDetailPage({
             )}
             <Field
               label="자격"
-              value={employee.qualificationGrade ? QUALIFICATION_GRADE_LABELS[employee.qualificationGrade] : "-"}
+              value={
+                employee.qualificationGrades.length > 0
+                  ? employee.qualificationGrades.map((g) => QUALIFICATION_GRADE_LABELS[g]).join(", ")
+                  : "-"
+              }
             />
             <Field label="입사일" value={formatDate(employee.hireDate)} />
             <Field label="근속연수" value={`${tenureYears(employee.hireDate)}년`} />

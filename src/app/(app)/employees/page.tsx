@@ -5,6 +5,7 @@ import {
   EMPLOYEE_STATUS_COLORS,
   EMPLOYEE_STATUS_LABELS,
   JOB_GRADE_LABELS,
+  QUALIFICATION_GRADE_LABELS,
   formatDate,
 } from "@/lib/format";
 import type { Prisma } from "@/generated/prisma/client";
@@ -58,16 +59,32 @@ export default async function EmployeesPage({
     }),
   ]);
 
+  const exportQuery = new URLSearchParams();
+  if (params.q) exportQuery.set("q", params.q);
+  if (params.branchId) exportQuery.set("branchId", params.branchId);
+  if (params.departmentId) exportQuery.set("departmentId", params.departmentId);
+  if (params.status) exportQuery.set("status", params.status);
+  if (params.qualification) exportQuery.set("qualification", params.qualification);
+  const exportQueryString = exportQuery.toString();
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold text-slate-900">전직원 현황판</h1>
-        <Link
-          href="/cases/new"
-          className="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-700"
-        >
-          입퇴사 케이스 생성
-        </Link>
+        <div className="flex items-center gap-2">
+          <a
+            href={`/api/employees/export${exportQueryString ? `?${exportQueryString}` : ""}`}
+            className="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            엑셀 다운로드
+          </a>
+          <Link
+            href="/cases/new"
+            className="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-700"
+          >
+            입퇴사 케이스 생성
+          </Link>
+        </div>
       </div>
 
       <form method="get" className="flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 bg-white p-4">
@@ -165,6 +182,7 @@ export default async function EmployeesPage({
               <th className="px-4 py-2 font-medium">본/지사</th>
               <th className="px-4 py-2 font-medium">부서</th>
               <th className="px-4 py-2 font-medium">직급</th>
+              <th className="px-4 py-2 font-medium">자격</th>
               <th className="px-4 py-2 font-medium">계약형태</th>
               <th className="px-4 py-2 font-medium">보유자격</th>
               <th className="px-4 py-2 font-medium">연락처</th>
@@ -174,7 +192,7 @@ export default async function EmployeesPage({
           <tbody className="divide-y divide-slate-100">
             {employees.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-4 py-6 text-center text-slate-400">
+                <td colSpan={10} className="px-4 py-6 text-center text-slate-400">
                   조건에 맞는 직원이 없습니다.
                 </td>
               </tr>
@@ -191,6 +209,11 @@ export default async function EmployeesPage({
                 <td className="px-4 py-2">{e.department.name}</td>
                 <td className="px-4 py-2 text-slate-500">
                   {e.jobGrade ? JOB_GRADE_LABELS[e.jobGrade] : "-"}
+                </td>
+                <td className="px-4 py-2 text-slate-500">
+                  {e.qualificationGrades.length > 0
+                    ? e.qualificationGrades.map((g) => QUALIFICATION_GRADE_LABELS[g]).join(", ")
+                    : "-"}
                 </td>
                 <td className="px-4 py-2 text-slate-500">{CONTRACT_TYPE_LABELS[e.contractType]}</td>
                 <td className="px-4 py-2 text-slate-500">

@@ -42,7 +42,7 @@ export default async function EmployeeEditPage({
           jobGrade === "PARTNER"
             ? (((formData.get("partnerType") as string) || null) as PartnerType | null)
             : null,
-        qualificationGrade: ((formData.get("qualificationGrade") as string) || null) as QualificationGrade | null,
+        qualificationGrades: formData.getAll("qualificationGrades") as QualificationGrade[],
         phone: (formData.get("phone") as string) || null,
         email: (formData.get("email") as string) || null,
         personalEmail: (formData.get("personalEmail") as string) || null,
@@ -96,7 +96,7 @@ export default async function EmployeeEditPage({
           <JobGradeFields
             defaultJobGrade={employee.jobGrade}
             defaultPartnerType={employee.partnerType}
-            defaultQualificationGrade={employee.qualificationGrade}
+            defaultQualificationGrades={employee.qualificationGrades}
           />
           <div>
             <label className="block text-xs font-medium text-slate-500">계약형태</label>

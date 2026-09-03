@@ -3,6 +3,9 @@
 import { useState } from "react";
 import { CHECKLIST_TYPE_LABELS } from "@/lib/documents";
 import JobGradeFields from "@/components/JobGradeFields";
+import EmployeeSearchSelect from "@/components/EmployeeSearchSelect";
+
+const OFFBOARDING_REASONS = ["개인사유", "이직", "권고사직", "기타"];
 
 type Branch = { id: string; name: string };
 type Department = { id: string; name: string; branchId: string | null };
@@ -25,6 +28,7 @@ export default function NewCaseForm({
 }) {
   const [mode, setMode] = useState<"ONBOARDING" | "OFFBOARDING">("ONBOARDING");
   const [branchId, setBranchId] = useState(branches[0]?.id ?? "");
+  const [offboardingReason, setOffboardingReason] = useState("개인사유");
   const departmentsInBranch = departments.filter((d) => d.branchId === branchId);
 
   return (
@@ -90,7 +94,6 @@ export default function NewCaseForm({
             </div>
             <JobGradeFields />
             <TextField name="hireDate" label="입사(예정)일" type="date" required />
-            <TextField name="yearsOfExperience" label="경력연수(입사 전)" type="number" defaultValue="0" />
             <TextField name="email" label="사내 이메일" type="email" />
             <TextField name="phone" label="연락처" />
           </div>
@@ -118,16 +121,27 @@ export default function NewCaseForm({
         <form action={createOffboarding} className="space-y-4 rounded-lg border border-slate-200 bg-white p-5">
           <div>
             <label className="block text-xs font-medium text-slate-500">퇴사 대상 직원</label>
-            <select name="employeeId" required className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm">
-              <option value="">선택하세요</option>
-              {activeEmployees.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.name} ({e.employeeNumber} · {e.departmentName})
+            <EmployeeSearchSelect employees={activeEmployees} name="employeeId" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-500">퇴사 사유</label>
+            <select
+              name="reason"
+              value={offboardingReason}
+              onChange={(e) => setOffboardingReason(e.target.value)}
+              className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+            >
+              {OFFBOARDING_REASONS.map((r) => (
+                <option key={r} value={r}>
+                  {r}
                 </option>
               ))}
             </select>
           </div>
-          <TextArea name="note" label="퇴사 사유/비고" />
+          {offboardingReason === "기타" && (
+            <TextField name="reasonDetail" label="사유 직접 입력" />
+          )}
+          <TextArea name="note" label="비고" />
           <button type="submit" className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700">
             퇴사 케이스 시작
           </button>

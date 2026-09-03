@@ -56,7 +56,7 @@ export default async function NewCasePage({
     const jobGrade = ((formData.get("jobGrade") as string) || null) as JobGrade | null;
     const partnerType =
       jobGrade === "PARTNER" ? (((formData.get("partnerType") as string) || null) as PartnerType | null) : null;
-    const qualificationGrade = ((formData.get("qualificationGrade") as string) || null) as QualificationGrade | null;
+    const qualificationGrades = formData.getAll("qualificationGrades") as QualificationGrade[];
 
     const employee = await prisma.employee.create({
       data: {
@@ -65,9 +65,8 @@ export default async function NewCasePage({
         departmentId,
         jobGrade,
         partnerType,
-        qualificationGrade,
+        qualificationGrades,
         hireDate: new Date(hireDateRaw),
-        yearsOfExperience: Number(formData.get("yearsOfExperience") ?? 0),
         email: (formData.get("email") as string) || null,
         phone: (formData.get("phone") as string) || null,
         status: "PENDING_ENTRY",
@@ -90,13 +89,20 @@ export default async function NewCasePage({
     const session = await requireHr();
 
     const employeeId = formData.get("employeeId") as string;
-    if (!employeeId) return;
+    if (!employeeId) {
+      redirect(`/cases/new?error=${encodeURIComponent("퇴사 대상 직원을 선택해주세요.")}`);
+    }
+
+    const reason = formData.get("reason") as string;
+    const reasonDetail = (formData.get("reasonDetail") as string)?.trim();
+    const reasonText = reason === "기타" && reasonDetail ? reasonDetail : reason;
+    const note = (formData.get("note") as string)?.trim();
 
     const employeeCase = await startCase({
       employeeId,
       type: "OFFBOARDING",
       initiatedById: session.user.id,
-      note: (formData.get("note") as string) || undefined,
+      note: [reasonText, note].filter(Boolean).join(" · ") || undefined,
     });
 
     redirect(`/cases/${employeeCase.id}`);
