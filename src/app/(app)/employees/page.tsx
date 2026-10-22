@@ -1,14 +1,102 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
+import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
   CONTRACT_TYPE_LABELS,
-  EMPLOYEE_STATUS_COLORS,
   EMPLOYEE_STATUS_LABELS,
   JOB_GRADE_LABELS,
   QUALIFICATION_GRADE_LABELS,
   formatDate,
 } from "@/lib/format";
-import type { Prisma } from "@/generated/prisma/client";
+import type { EmployeeStatus, Prisma, QualificationGrade } from "@/generated/prisma/client";
+import EmployeeBulkTable, { type BulkActionState } from "./EmployeeBulkTable";
+
+async function requireHr() {
+  const session = await auth();
+  if (!session || (session.user.role !== "ADMIN" && session.user.role !== "HR")) {
+    redirect("/");
+  }
+  return session;
+}
+
+const MAX_BULK_IDS = 500;
+
+async function bulkUpdateStatusAction(
+  _prevState: BulkActionState,
+  formData: FormData
+): Promise<BulkActionState> {
+  "use server";
+  await requireHr();
+
+  const employeeIds = formData
+    .getAll("employeeIds")
+    .map(String)
+    .filter(Boolean)
+    .slice(0, MAX_BULK_IDS);
+  const status = formData.get("status") as string;
+
+  if (employeeIds.length === 0) {
+    return { total: 0, successCount: 0, failCount: 0, errors: ["선택된 직원이 없습니다."] };
+  }
+  if (!Object.keys(EMPLOYEE_STATUS_LABELS).includes(status)) {
+    return {
+      total: employeeIds.length,
+      successCount: 0,
+      failCount: employeeIds.length,
+      errors: ["알 수 없는 재직상태 값입니다."],
+    };
+  }
+
+  const data: Prisma.EmployeeUpdateManyMutationInput = { status: status as EmployeeStatus };
+  if (status === "TERMINATED") {
+    data.terminationDate = new Date();
+  }
+
+  const result = await prisma.employee.updateMany({
+    where: { id: { in: employeeIds } },
+    data,
+  });
+
+  revalidatePath("/employees");
+
+  return {
+    total: employeeIds.length,
+    successCount: result.count,
+    failCount: employeeIds.length - result.count,
+    errors: [],
+  };
+}
+
+async function bulkDeleteAction(
+  _prevState: BulkActionState,
+  formData: FormData
+): Promise<BulkActionState> {
+  "use server";
+  await requireHr();
+
+  const employeeIds = formData
+    .getAll("employeeIds")
+    .map(String)
+    .filter(Boolean)
+    .slice(0, MAX_BULK_IDS);
+
+  if (employeeIds.length === 0) {
+    return { total: 0, successCount: 0, failCount: 0, errors: ["선택된 직원이 없습니다."] };
+  }
+
+  const result = await prisma.employee.deleteMany({ where: { id: { in: employeeIds } } });
+
+  revalidatePath("/employees");
+
+  return {
+    total: employeeIds.length,
+    successCount: result.count,
+    failCount: employeeIds.length - result.count,
+    errors: [],
+  };
+}
 
 export default async function EmployeesPage({
   searchParams,
@@ -19,9 +107,18 @@ export default async function EmployeesPage({
     departmentId?: string;
     status?: string;
     qualification?: string;
+    qualificationGrade?: string | string[];
   }>;
 }) {
   const params = await searchParams;
+  const session = await auth();
+  const canEdit = session?.user.role === "ADMIN" || session?.user.role === "HR";
+
+  const qualificationGrades = Array.isArray(params.qualificationGrade)
+    ? params.qualificationGrade
+    : params.qualificationGrade
+      ? [params.qualificationGrade]
+      : [];
 
   const where: Prisma.EmployeeWhereInput = {};
 
@@ -44,6 +141,9 @@ export default async function EmployeesPage({
       some: { name: { contains: params.qualification, mode: "insensitive" } },
     };
   }
+  if (qualificationGrades.length > 0) {
+    where.qualificationGrades = { hasSome: qualificationGrades as QualificationGrade[] };
+  }
 
   const [employees, branches, departments] = await Promise.all([
     prisma.employee.findMany({
@@ -65,7 +165,22 @@ export default async function EmployeesPage({
   if (params.departmentId) exportQuery.set("departmentId", params.departmentId);
   if (params.status) exportQuery.set("status", params.status);
   if (params.qualification) exportQuery.set("qualification", params.qualification);
+  for (const g of qualificationGrades) exportQuery.append("qualificationGrade", g);
   const exportQueryString = exportQuery.toString();
+
+  const employeeRows = employees.map((e) => ({
+    id: e.id,
+    name: e.name,
+    employeeNumber: e.employeeNumber,
+    branchName: e.department.branch?.name ?? null,
+    departmentName: e.department.name,
+    jobGradeLabel: e.jobGrade ? JOB_GRADE_LABELS[e.jobGrade] : null,
+    qualificationGradeLabels: e.qualificationGrades.map((g) => QUALIFICATION_GRADE_LABELS[g]),
+    contractTypeLabel: CONTRACT_TYPE_LABELS[e.contractType],
+    qualificationNames: e.qualifications.map((q) => q.name),
+    phone: e.phone,
+    status: e.status,
+  }));
 
   return (
     <div className="space-y-6">
@@ -166,80 +281,47 @@ export default async function EmployeesPage({
             className="mt-1 w-36 rounded-md border border-slate-300 px-2 py-1.5 text-sm"
           />
         </div>
+        <div>
+          <label className="block text-xs font-medium text-slate-500">자격 (다중 선택 가능)</label>
+          <div className="mt-1 flex max-w-xs flex-wrap gap-x-3 gap-y-1 rounded-md border border-slate-300 px-2.5 py-1.5">
+            {Object.entries(QUALIFICATION_GRADE_LABELS).map(([value, label]) => (
+              <label key={value} className="flex items-center gap-1 text-xs text-slate-700">
+                <input
+                  type="checkbox"
+                  name="qualificationGrade"
+                  value={value}
+                  defaultChecked={qualificationGrades.includes(value)}
+                  className="h-3.5 w-3.5 rounded border-slate-300"
+                />
+                {label}
+              </label>
+            ))}
+          </div>
+        </div>
         <button
           type="submit"
           className="rounded-md bg-slate-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-slate-700"
         >
           검색
         </button>
-        {(params.q || params.branchId || params.departmentId || params.status || params.qualification) && (
+        {(params.q ||
+          params.branchId ||
+          params.departmentId ||
+          params.status ||
+          params.qualification ||
+          qualificationGrades.length > 0) && (
           <Link href="/employees" className="text-sm text-slate-500 hover:underline">
             필터 초기화
           </Link>
         )}
       </form>
 
-      <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-        <table className="min-w-full divide-y divide-slate-200 text-sm">
-          <thead className="bg-slate-50 text-left text-slate-500">
-            <tr>
-              <th className="px-4 py-2 font-medium">이름</th>
-              <th className="px-4 py-2 font-medium">사번</th>
-              <th className="px-4 py-2 font-medium">본부</th>
-              <th className="px-4 py-2 font-medium">부서</th>
-              <th className="px-4 py-2 font-medium">직급</th>
-              <th className="px-4 py-2 font-medium">자격</th>
-              <th className="px-4 py-2 font-medium">계약형태</th>
-              <th className="px-4 py-2 font-medium">보유자격</th>
-              <th className="px-4 py-2 font-medium">연락처</th>
-              <th className="px-4 py-2 font-medium">상태</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {employees.length === 0 && (
-              <tr>
-                <td colSpan={10} className="px-4 py-6 text-center text-slate-400">
-                  조건에 맞는 직원이 없습니다.
-                </td>
-              </tr>
-            )}
-            {employees.map((e) => (
-              <tr key={e.id} className="hover:bg-slate-50">
-                <td className="px-4 py-2">
-                  <Link href={`/employees/${e.id}`} className="font-medium text-slate-900 hover:underline">
-                    {e.name}
-                  </Link>
-                </td>
-                <td className="px-4 py-2 text-slate-500">{e.employeeNumber}</td>
-                <td className="px-4 py-2 text-slate-500">{e.department.branch?.name ?? "-"}</td>
-                <td className="px-4 py-2">{e.department.name}</td>
-                <td className="px-4 py-2 text-slate-500">
-                  {e.jobGrade ? JOB_GRADE_LABELS[e.jobGrade] : "-"}
-                </td>
-                <td className="px-4 py-2 text-slate-500">
-                  {e.qualificationGrades.length > 0
-                    ? e.qualificationGrades.map((g) => QUALIFICATION_GRADE_LABELS[g]).join(", ")
-                    : "-"}
-                </td>
-                <td className="px-4 py-2 text-slate-500">{CONTRACT_TYPE_LABELS[e.contractType]}</td>
-                <td className="px-4 py-2 text-slate-500">
-                  {e.qualifications.length > 0
-                    ? e.qualifications.map((q) => q.name).join(", ")
-                    : "-"}
-                </td>
-                <td className="px-4 py-2 text-slate-500">{e.phone ?? "-"}</td>
-                <td className="px-4 py-2">
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-xs font-medium ${EMPLOYEE_STATUS_COLORS[e.status]}`}
-                  >
-                    {EMPLOYEE_STATUS_LABELS[e.status]}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <EmployeeBulkTable
+        employees={employeeRows}
+        canEdit={!!canEdit}
+        bulkUpdateStatusAction={bulkUpdateStatusAction}
+        bulkDeleteAction={bulkDeleteAction}
+      />
       <p className="text-xs text-slate-400">
         마지막 갱신: {formatDate(new Date())} · 총 {employees.length}명 표시중
       </p>

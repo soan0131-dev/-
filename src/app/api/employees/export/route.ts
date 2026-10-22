@@ -10,7 +10,7 @@ import {
   QUALIFICATION_GRADE_LABELS,
   formatDate,
 } from "@/lib/format";
-import type { Prisma } from "@/generated/prisma/client";
+import type { Prisma, QualificationGrade } from "@/generated/prisma/client";
 
 export async function GET(req: Request) {
   const session = await auth();
@@ -24,6 +24,7 @@ export async function GET(req: Request) {
   const departmentId = url.searchParams.get("departmentId");
   const status = url.searchParams.get("status");
   const qualification = url.searchParams.get("qualification");
+  const qualificationGrades = url.searchParams.getAll("qualificationGrade");
 
   const where: Prisma.EmployeeWhereInput = {};
   if (q) {
@@ -44,6 +45,9 @@ export async function GET(req: Request) {
     where.qualifications = {
       some: { name: { contains: qualification, mode: "insensitive" } },
     };
+  }
+  if (qualificationGrades.length > 0) {
+    where.qualificationGrades = { hasSome: qualificationGrades as QualificationGrade[] };
   }
 
   const employees = await prisma.employee.findMany({

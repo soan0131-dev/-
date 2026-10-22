@@ -62,8 +62,7 @@ enum JobGrade {
 // 자격 (표시 순서 = 정의 순서)
 enum QualificationGrade {
   KICPA_REGISTERED // KICPA(등록)
-  KICPA_TRAINEE_YEAR2 // KICPA(수습-2년차)
-  KICPA_TRAINEE_YEAR1 // KICPA(수습-1년차)
+  KICPA_TRAINEE // KICPA(수습)
   AICPA // AICPA
   TAX_ACCOUNTANT // 세무사
   CISA // CISA

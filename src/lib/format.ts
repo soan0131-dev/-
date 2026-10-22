@@ -89,8 +89,7 @@ export const JOB_GRADE_LABELS: Record<string, string> = {
 // 자격 (순서 = 실제 표시 순서)
 export const QUALIFICATION_GRADE_LABELS: Record<string, string> = {
   KICPA_REGISTERED: "KICPA(등록)",
-  KICPA_TRAINEE_YEAR2: "KICPA(수습-2년차)",
-  KICPA_TRAINEE_YEAR1: "KICPA(수습-1년차)",
+  KICPA_TRAINEE: "KICPA(수습)",
   AICPA: "AICPA",
   TAX_ACCOUNTANT: "세무사",
   CISA: "CISA",
