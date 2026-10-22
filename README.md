@@ -121,6 +121,8 @@ npm run build      # 프로덕션 빌드
 - 알림은 시스템 내 알림함으로만 제공되며, 이메일/메신저 알림은 포함되어 있지 않습니다
   (추후 SMTP 연동 등으로 확장 가능한 구조입니다).
 - 반려된 케이스는 HR/관리자가 "반려 항목 재오픈"으로 보완 후 재진행합니다.
-- `prisma` CLI의 개발 의존성인 `deepmerge-ts`에 알려진 취약점(GHSA-ggr8-5vv4-36mx, 스택 소진
-  DoS)이 있습니다. 런타임에 노출되는 경로가 아닌 CLI 도구의 devDependency이므로 즉시 위험은
-  낮으나, 향후 Prisma CLI 업데이트로 해결되면 반영하세요.
+- `prisma` CLI의 개발 의존성인 `deepmerge-ts`에 알려졌던 취약점(GHSA-ggr8-5vv4-36mx, 스택
+  소진 DoS)은 Prisma 7.10.1로 업데이트하며 해결되었습니다. 현재는 ESLint(`eslint-config-next`
+  경유 `fast-glob`/`micromatch`/`braces` 등)와 Tailwind 빌드 도구 체인에 high 등급 취약점이
+  일부 남아있으나, 모두 린트/빌드 시점에만 쓰이는 devDependency이며 런타임(서버/브라우저)
+  번들에는 포함되지 않습니다. 업스트림 패키지의 후속 릴리스로 해결되면 반영하세요.
