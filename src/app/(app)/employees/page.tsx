@@ -281,11 +281,11 @@ export default async function EmployeesPage({
             className="mt-1 w-36 rounded-md border border-slate-300 px-2 py-1.5 text-sm"
           />
         </div>
-        <div>
+        <div className="w-full">
           <label className="block text-xs font-medium text-slate-500">자격 (다중 선택 가능)</label>
-          <div className="mt-1 flex max-w-xs flex-wrap gap-x-3 gap-y-1 rounded-md border border-slate-300 px-2.5 py-1.5">
+          <div className="mt-1 flex flex-nowrap gap-x-4 gap-y-1 overflow-x-auto rounded-md border border-slate-300 px-2.5 py-1.5">
             {Object.entries(QUALIFICATION_GRADE_LABELS).map(([value, label]) => (
-              <label key={value} className="flex items-center gap-1 text-xs text-slate-700">
+              <label key={value} className="flex shrink-0 items-center gap-1 text-xs text-slate-700">
                 <input
                   type="checkbox"
                   name="qualificationGrade"
