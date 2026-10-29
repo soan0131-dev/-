@@ -7,12 +7,27 @@ import {
   CASE_TYPE_LABELS,
   formatDate,
 } from "@/lib/format";
+import { computeMonthlyTrend, computeQualificationHeadcount } from "@/lib/dashboardStats";
+import QualificationHeadcountBars from "@/components/QualificationHeadcountBars";
+import MonthlyTrendCharts from "@/components/MonthlyTrendCharts";
+import DateField from "@/components/DateField";
 
-export default async function DashboardPage() {
+const TREND_MONTHS = 12;
+
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ asOf?: string }>;
+}) {
   const session = await auth();
   const user = session!.user;
+  const params = await searchParams;
 
-  const [inProgressCases, myPendingApprovals, employeeCount] = await Promise.all([
+  const today = new Date();
+  const asOfDate = params.asOf && /^\d{4}-\d{2}-\d{2}$/.test(params.asOf) ? new Date(params.asOf) : today;
+  const asOfLabel = params.asOf ?? today.toISOString().slice(0, 10);
+
+  const [inProgressCases, myPendingApprovals, employeeCount, employeeDateInfo] = await Promise.all([
     prisma.employeeCase.findMany({
       where: { status: "IN_PROGRESS" },
       include: { employee: true, steps: true },
@@ -26,7 +41,13 @@ export default async function DashboardPage() {
           : { status: "ACTIVE", departmentId: user.departmentId ?? "__none__" },
     }),
     prisma.employee.count(),
+    prisma.employee.findMany({
+      select: { hireDate: true, terminationDate: true, qualificationGrades: true },
+    }),
   ]);
+
+  const qualificationRows = computeQualificationHeadcount(employeeDateInfo, asOfDate);
+  const trendRows = computeMonthlyTrend(employeeDateInfo, TREND_MONTHS);
 
   return (
     <div className="space-y-8">
@@ -34,6 +55,36 @@ export default async function DashboardPage() {
         <StatCard label="전체 직원 수" value={employeeCount} href="/employees" />
         <StatCard label="진행중인 입퇴사 건" value={inProgressCases.length} href="/cases" />
         <StatCard label="내가 확인할 항목" value={myPendingApprovals} href="/my-approvals" />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <section className="rounded-lg border border-slate-200 bg-white p-5">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-slate-900">자격별 보유 인원 현황</h2>
+          </div>
+          <form method="get" className="mt-3 flex items-end gap-2">
+            <div className="w-36">
+              <DateField name="asOf" label="기준일" defaultValue={asOfLabel} />
+            </div>
+            <button
+              type="submit"
+              className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700"
+            >
+              조회
+            </button>
+          </form>
+          <p className="mt-2 text-xs text-slate-400">
+            기준일 당시 재직중(입사일≤기준일, 퇴사일 없거나 기준일 이후)이었던 직원의 현재 등록된 자격을
+            집계합니다.
+          </p>
+          <div className="mt-4">
+            <QualificationHeadcountBars rows={qualificationRows} />
+          </div>
+        </section>
+
+        <section className="rounded-lg border border-slate-200 bg-white p-5">
+          <MonthlyTrendCharts rows={trendRows} />
+        </section>
       </div>
 
       <section>
