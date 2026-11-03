@@ -263,6 +263,12 @@ class ConfigTest(unittest.TestCase):
         with self.assertRaises(ConfigError):
             self._load(no_tables)
 
+    def test_cp949_config_loads(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "config.ini"
+            path.write_bytes(CONFIG_TEXT.encode("cp949"))
+            self.assertEqual(load_config(path).tables[0].columns["date"], "입사날짜")
+
     def test_example_config_loads(self):
         cfg = load_config(ROOT / "config.example.ini")
         self.assertEqual([c.name for c in cfg.channels], ["team:IT", "team:총무", "team:보안"])

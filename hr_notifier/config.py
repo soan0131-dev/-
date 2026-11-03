@@ -179,8 +179,12 @@ def load_config(path: Path) -> AppConfig:
 
     # interpolation 비활성화: 비밀번호/경로에 '%' 가 들어가도 안전하게 처리
     cp = configparser.ConfigParser(interpolation=None)
-    with path.open(encoding="utf-8-sig") as f:
-        cp.read_file(f)
+    data = path.read_bytes()
+    try:
+        text = data.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        text = data.decode("cp949", errors="strict")  # 메모장에서 ANSI 로 저장한 경우
+    cp.read_string(text, source=str(path))
 
     base = path.resolve().parent
 
