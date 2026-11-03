@@ -17,8 +17,9 @@ ENV_SMTP_PASSWORD = "HR_NOTIFIER_SMTP_PASSWORD"
 EVENT_KINDS = ("join", "leave")
 EVENT_LABELS = {"join": "입사", "leave": "퇴사"}
 
-REQUIRED_COLUMNS = ("employee_id", "name", "department", "event_type", "date")
-OPTIONAL_COLUMNS = ("position", "email")
+# 표마다 필요한 컬럼 (값: 명단 파일의 헤더 이름)
+REQUIRED_COLUMNS = ("name", "date")
+OPTIONAL_COLUMNS = ("employee_id", "department", "position", "email")
 
 SMTP_SECURITY_MODES = ("starttls", "ssl", "none")
 
@@ -34,6 +35,16 @@ class InputConfig:
     path: Path
     encoding: str | None
     sheet: str | None
+
+
+@dataclass(frozen=True)
+class TableConfig:
+    """시트 안의 표 하나. 입사자 표 / 퇴사자 표가 열 범위로 나뉘어 있다."""
+
+    kind: str  # "join" | "leave"
+    first_col: int  # 0부터 시작하는 열 번호 (A=0)
+    last_col: int  # 포함
+    columns: dict[str, str]  # 필드명 → 헤더 이름
 
 
 @dataclass(frozen=True)
@@ -62,8 +73,7 @@ class Channel:
 @dataclass(frozen=True)
 class AppConfig:
     input: InputConfig
-    columns: dict[str, str]
-    event_values: dict[str, str]
+    tables: tuple[TableConfig, ...]
     lead_days: int
     past_days: int
     smtp: SmtpConfig
@@ -90,6 +100,38 @@ def _split_kinds(value: str, section: str) -> tuple[str, ...]:
     if unknown:
         raise ConfigError(f"[{section}] kinds 에 알 수 없는 값: {unknown} (허용: {EVENT_KINDS})")
     return kinds
+
+
+def column_index(letters: str) -> int:
+    """엑셀 열 문자 → 0부터 시작하는 번호 (A=0, Z=25, AC=28)."""
+    letters = letters.strip().upper()
+    if not letters.isascii() or not letters.isalpha():
+        raise ValueError(letters)
+    index = 0
+    for ch in letters:
+        index = index * 26 + (ord(ch) - ord("A") + 1)
+    return index - 1
+
+
+def _parse_range(value: str, section: str) -> tuple[int, int]:
+    try:
+        first, last = (column_index(v) for v in value.split(":"))
+    except ValueError as exc:
+        raise ConfigError(f"[{section}] range 는 'A:E' 형식이어야 합니다: {value!r}") from exc
+    if first > last:
+        raise ConfigError(f"[{section}] range 의 시작 열이 끝 열보다 뒤에 있습니다: {value!r}")
+    return first, last
+
+
+def _load_table(cp: configparser.ConfigParser, kind: str) -> TableConfig:
+    section = kind
+    first, last = _parse_range(_require(cp, section, "range"), section)
+    columns = {key: normalize_header(_require(cp, section, key)) for key in REQUIRED_COLUMNS}
+    for key in OPTIONAL_COLUMNS:
+        header = normalize_header(cp.get(section, key, fallback=""))
+        if header:
+            columns[key] = header
+    return TableConfig(kind=kind, first_col=first, last_col=last, columns=columns)
 
 
 def _resolve(base: Path, value: str) -> Path:
@@ -148,20 +190,9 @@ def load_config(path: Path) -> AppConfig:
         sheet=cp.get("input", "sheet", fallback="").strip() or None,
     )
 
-    columns: dict[str, str] = {}
-    for key in REQUIRED_COLUMNS:
-        columns[key] = normalize_header(_require(cp, "columns", key))
-    for key in OPTIONAL_COLUMNS:
-        header = normalize_header(cp.get("columns", key, fallback=""))
-        if header:
-            columns[key] = header
-
-    event_values: dict[str, str] = {}
-    for kind in EVENT_KINDS:
-        raw = cp.get("event_values", kind, fallback=EVENT_LABELS[kind])
-        for value in (v.strip() for v in raw.split(",")):
-            if value:
-                event_values[value] = kind
+    tables = tuple(_load_table(cp, kind) for kind in EVENT_KINDS if cp.has_section(kind))
+    if not tables:
+        raise ConfigError("[join](입사자 표) 또는 [leave](퇴사자 표) 섹션이 최소 1개 필요합니다")
 
     security = cp.get("smtp", "security", fallback="starttls").strip().lower()
     if security not in SMTP_SECURITY_MODES:
@@ -187,8 +218,7 @@ def load_config(path: Path) -> AppConfig:
 
     return AppConfig(
         input=input_cfg,
-        columns=columns,
-        event_values=event_values,
+        tables=tables,
         lead_days=_get_int(cp, "schedule", "lead_days", 7),
         past_days=_get_int(cp, "schedule", "past_days", 3),
         smtp=smtp,

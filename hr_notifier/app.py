@@ -6,10 +6,10 @@ import smtplib
 from datetime import date, timedelta
 from typing import Callable
 
-from .config import AppConfig, SmtpConfig
+from .config import EVENT_LABELS, AppConfig, SmtpConfig
 from .mailer import Mailer
-from .reader import read_table
-from .records import parse_events
+from .reader import extract_table, read_sheet
+from .records import Event, merge_events, parse_events
 from .state import SentState
 from .templates import build_message
 
@@ -20,11 +20,17 @@ MailerFactory = Callable[[SmtpConfig, bool], Mailer]
 
 def run(cfg: AppConfig, today: date, dry_run: bool = False, mailer_factory: MailerFactory = Mailer) -> int:
     """실행 후 종료 코드 반환 (0: 정상, 1: 일부/전체 실패)."""
-    rows = read_table(cfg.input.path, cfg.columns.values(), cfg.input.encoding, cfg.input.sheet)
+    raw_rows = read_sheet(cfg.input.path, cfg.input.encoding, cfg.input.sheet)
 
-    events, errors = parse_events(rows, cfg.columns, cfg.event_values)
-    for err in errors:
-        log.warning("건너뜀 - %s", err)
+    collected: list[Event] = []
+    for table in cfg.tables:
+        label = EVENT_LABELS[table.kind]
+        rows = extract_table(raw_rows, table.first_col, table.last_col, table.columns.values(), label)
+        table_events, errors = parse_events(rows, table.columns, table.kind)
+        for err in errors:
+            log.warning("[%s자 표] 건너뜀 - %s", label, err)
+        collected.extend(table_events)
+    events = merge_events(collected)
 
     start = today - timedelta(days=cfg.past_days)
     end = today + timedelta(days=cfg.lead_days)

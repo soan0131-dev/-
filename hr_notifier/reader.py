@@ -1,4 +1,8 @@
-"""입퇴사자 명단 파일(CSV / XLSX) 읽기."""
+"""입퇴사자 명단 파일(CSV / XLSX) 읽기.
+
+한 시트에 입사자 표와 퇴사자 표가 열 범위로 나란히 있는 형식을 지원한다.
+파일은 한 번만 읽고(read_sheet), 표마다 열 범위를 잘라 쓴다(extract_table).
+"""
 from __future__ import annotations
 
 import csv
@@ -17,6 +21,7 @@ class InputError(Exception):
     """명단 파일을 읽을 수 없는 경우."""
 
 
+RawRow = tuple[Any, ...]
 Row = dict[str, Any]
 
 
@@ -25,24 +30,16 @@ def normalize_header(value: Any) -> str:
     return "" if value is None else "".join(str(value).split())
 
 
-def read_table(
-    path: Path,
-    headers: Iterable[str],
-    encoding: str | None = None,
-    sheet: str | None = None,
-) -> list[Row]:
-    """파일을 읽어 행 목록을 반환한다. 각 행은 {헤더: 값} 딕셔너리.
-
-    headers 에 지정한 컬럼이 모두 들어 있는 첫 행을 헤더 행으로 보고, 그 위의 행(제목 등)은 무시한다.
-    """
+def read_sheet(path: Path, encoding: str | None = None, sheet: str | None = None) -> list[RawRow]:
+    """시트 전체를 셀 값 튜플 목록으로 읽는다."""
     if not path.is_file():
         raise InputError(f"명단 파일을 찾을 수 없습니다: {path}")
-    wanted = {normalize_header(h) for h in headers}
     suffix = path.suffix.lower()
     if suffix == ".csv":
-        return _read_csv(path, wanted, encoding)
+        text = _decode(path.read_bytes(), encoding)
+        return [tuple(r) for r in csv.reader(io.StringIO(text, newline=""))]
     if suffix in (".xlsx", ".xlsm"):
-        return _read_xlsx(path, wanted, sheet)
+        return _read_xlsx(path, sheet)
     raise InputError(f"지원하지 않는 파일 형식입니다: {suffix or '(확장자 없음)'} (.csv, .xlsx, .xlsm 만 지원)")
 
 
@@ -56,13 +53,7 @@ def _decode(data: bytes, encoding: str | None) -> str:
     raise InputError(f"CSV 인코딩을 해석할 수 없습니다 (시도: {', '.join(candidates)})")
 
 
-def _read_csv(path: Path, wanted: set[str], encoding: str | None) -> list[Row]:
-    # 파일은 한 번만 읽고 메모리에서 인코딩을 판별한다
-    text = _decode(path.read_bytes(), encoding)
-    return _to_rows(csv.reader(io.StringIO(text, newline="")), wanted)
-
-
-def _read_xlsx(path: Path, wanted: set[str], sheet: str | None) -> list[Row]:
+def _read_xlsx(path: Path, sheet: str | None) -> list[RawRow]:
     try:
         import openpyxl
     except ImportError as exc:  # pragma: no cover - 환경 의존
@@ -79,7 +70,7 @@ def _read_xlsx(path: Path, wanted: set[str], sheet: str | None) -> list[Row]:
             ws = wb[sheet]
         else:
             ws = wb.worksheets[0]
-        return _to_rows(ws.iter_rows(values_only=True), wanted)
+        return [tuple(r) for r in ws.iter_rows(values_only=True)]
     finally:
         wb.close()
 
@@ -88,31 +79,46 @@ def _is_blank(value: Any) -> bool:
     return value is None or (isinstance(value, str) and not value.strip())
 
 
-def _to_rows(raw_rows: Iterable[Iterable[Any]], wanted: set[str]) -> list[Row]:
-    headers: list[str] | None = None
+def extract_table(
+    raw_rows: list[RawRow],
+    first_col: int,
+    last_col: int,
+    headers: Iterable[str],
+    label: str = "",
+) -> list[tuple[int, Row]]:
+    """열 범위 [first_col, last_col] 안의 표를 읽어 (엑셀 행 번호, {헤더: 값}) 목록을 반환한다.
+
+    범위 안에서 headers 가 모두 들어 있는 첫 행을 헤더 행으로 보고, 그 위(제목 등)는 무시한다.
+    범위 안이 모두 빈 행은 건너뛴다 (입사자/퇴사자 표의 길이가 달라도 됨).
+    """
+    wanted = {normalize_header(h) for h in headers}
+    width = last_col - first_col + 1
+    header_row: list[str] | None = None
     best: tuple[int, list[str]] = (-1, [])  # 오류 메시지용: 가장 많이 일치한 행
-    rows: list[Row] = []
-    for index, raw in enumerate(raw_rows):
-        raw = tuple(raw)
-        if headers is None:
-            if index >= HEADER_SCAN_ROWS:
+    rows: list[tuple[int, Row]] = []
+
+    for row_no, raw in enumerate(raw_rows, start=1):
+        cells = raw[first_col:last_col + 1]
+        if header_row is None:
+            if row_no > HEADER_SCAN_ROWS:
                 break
-            candidate = [normalize_header(v) for v in raw]
+            candidate = [normalize_header(v) for v in cells]
             matched = len(wanted.intersection(candidate))
             if matched == len(wanted):
-                headers = candidate
+                header_row = candidate
             elif matched > best[0]:
                 best = (matched, candidate)
             continue
-        if all(_is_blank(v) for v in raw):
+        if all(_is_blank(v) for v in cells):
             continue
-        rows.append({h: v for h, v in zip(headers, raw) if h})
+        cells = cells + (None,) * (width - len(cells))  # 짧은 CSV 행 보정
+        rows.append((row_no, {h: v for h, v in zip(header_row, cells) if h}))
 
-    if headers is None:
+    if header_row is None:
         found = [h for h in best[1] if h]
         missing = sorted(wanted.difference(best[1]))
         raise InputError(
-            f"상위 {HEADER_SCAN_ROWS}행에서 헤더 행을 찾지 못했습니다. "
-            f"설정의 [columns] 를 실제 헤더에 맞춰 주세요. 없는 컬럼: {missing} / 가장 비슷한 행: {found}"
+            f"{label} 표의 헤더 행을 상위 {HEADER_SCAN_ROWS}행에서 찾지 못했습니다. "
+            f"설정의 열 범위와 헤더 이름을 확인해 주세요. 없는 컬럼: {missing} / 가장 비슷한 행: {found}"
         )
     return rows

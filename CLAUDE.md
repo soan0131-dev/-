@@ -4,14 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-입퇴사자 알림 서비스 (`hr_notifier`): reads an HR roster (CSV/XLSX), selects joiners/leavers whose date falls in `[today - past_days, today + lead_days]`, and emails per-team task requests (IT, general affairs, security, ...) via SMTP. There is intentionally no company-wide announcement. Intended to run on Windows via Task Scheduler (`run_notifier.bat`). See README.md for usage.
+입퇴사자 알림 서비스 (`hr_notifier`): reads an HR roster (one sheet with a joiner table in columns A:E and a leaver table in Z:AC, ranges configurable), selects joiners/leavers whose date falls in `[today - past_days, today + lead_days]`, and emails per-team task requests (IT, general affairs, security, ...) via SMTP. There is intentionally no company-wide announcement. Intended to run on Windows via Task Scheduler (`run_notifier.bat`). See README.md for usage.
 
 - Python 3.9+; only third-party dependency is `openpyxl` (`requirements.txt`).
 - Tests: `python -m unittest -v` (all in `tests/test_notifier.py`).
 - Run locally: `python -m hr_notifier --config config.ini --dry-run [--today YYYY-MM-DD]`.
 - All environment-specific values live in `config.ini` (copied from `config.example.ini`, git-ignored); SMTP credentials come only from env vars `HR_NOTIFIER_SMTP_USER` / `HR_NOTIFIER_SMTP_PASSWORD`.
 
-Architecture: `app.run()` orchestrates `reader` (file → rows) → `records` (rows → `Event`, dedup by `kind|employee_id|date`) → `templates` (one `EmailMessage` per channel) → `mailer` (single lazy SMTP connection). `state.SentState` records sent keys per channel in `state/sent.json` so each channel gets each event once; failed channels retry on the next run. Channels are the config sections `[team:<name>]`.
+Architecture: `app.run()` orchestrates `reader.read_sheet` (file read once) → `reader.extract_table` (per `[join]`/`[leave]` column range, header row auto-detected) → `records` (rows → `Event`, dedup by `kind|employee_id-or-dept/name|date`) → `templates` (one `EmailMessage` per channel) → `mailer` (single lazy SMTP connection). `state.SentState` records sent keys per channel in `state/sent.json` so each channel gets each event once; failed channels retry on the next run. Channels are the config sections `[team:<name>]`.
 
 ## Development Guidelines
 

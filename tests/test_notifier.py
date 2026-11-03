@@ -6,41 +6,36 @@ from datetime import date, datetime
 from pathlib import Path
 
 from hr_notifier.app import run
-from hr_notifier.config import ConfigError, load_config
-from hr_notifier.reader import InputError, read_table
-from hr_notifier.records import parse_date, parse_events
+from hr_notifier.config import ConfigError, column_index, load_config
+from hr_notifier.reader import InputError, extract_table, read_sheet
+from hr_notifier.records import merge_events, parse_date, parse_events
 from hr_notifier.state import SentState
 
-COLUMNS = {
-    "employee_id": "사번",
-    "name": "성명",
-    "department": "부서",
-    "position": "직급",
-    "event_type": "구분",
-    "date": "일자",
-    "email": "이메일",
-}
-EVENT_VALUES = {"입사": "join", "퇴사": "leave"}
+ROOT = Path(__file__).resolve().parent.parent
+SAMPLE = ROOT / "samples" / "sample_roster.csv"
 
-CSV_TEXT = (
-    "사번,성명,부서,직급,구분,일자,이메일\n"
-    "1,홍길동,재무팀,사원,입사,2026-11-05,a@example.com\n"
-    "2,김철수,감사본부,매니저,퇴사,2026-11-07,b@example.com\n"
-    "3,이영희,세무본부,,입사,2026-12-31,\n"
-)
+JOIN_COLUMNS = {"employee_id": "사번", "name": "성명", "department": "부서", "position": "직급", "date": "입사일"}
+LEAVE_COLUMNS = {"name": "성명", "department": "부서", "position": "직급", "date": "퇴사일"}
+A_E = (0, 4)
+Z_AC = (25, 28)
 
 CONFIG_TEXT = textwrap.dedent(
-    """
+    f"""
     [input]
-    path = roster.csv
-    [columns]
+    path = {SAMPLE.as_posix()}
+    [join]
+    range = A:E
     employee_id = 사번
     name = 성명
     department = 부서
     position = 직급
-    event_type = 구분
-    date = 일자
-    email = 이메일
+    date = 입사일
+    [leave]
+    range = Z:AC
+    name = 성명
+    department = 부서
+    position = 직급
+    date = 퇴사일
     [schedule]
     lead_days = 7
     past_days = 3
@@ -80,6 +75,17 @@ class FakeMailer:
             FakeMailer.sent.append(msg)
 
 
+def side_by_side_rows(join_rows, leave_rows, title=True):
+    """A:E 입사자 표, Z:AC 퇴사자 표가 나란히 있는 시트 행 생성."""
+    rows = [("2026년 입퇴사자 현황",), ()] if title else []
+    rows.append(tuple(JOIN_COLUMNS.values()) + (None,) * 20 + tuple(LEAVE_COLUMNS.values()))
+    for i in range(max(len(join_rows), len(leave_rows))):
+        left = tuple(join_rows[i]) if i < len(join_rows) else (None,) * 5
+        right = tuple(leave_rows[i]) if i < len(leave_rows) else ()
+        rows.append(left + (None,) * 20 + right)
+    return rows
+
+
 class RecordsTest(unittest.TestCase):
     def test_parse_date_formats(self):
         for value in ("2026-11-05", "2026.11.05", "2026/11/05", "20261105", "2026.11.05.", "2026-11-05 00:00:00"):
@@ -90,66 +96,80 @@ class RecordsTest(unittest.TestCase):
 
     def test_parse_events_errors_and_dedupe(self):
         rows = [
-            {"사번": 12345.0, "성명": "홍길동", "부서": "재무팀", "구분": "입사", "일자": "2026-11-05"},
-            {"사번": "12345", "성명": "홍길동", "부서": "재무팀", "구분": "입사", "일자": "2026.11.05"},
-            {"사번": "2", "성명": "", "부서": "재무팀", "구분": "입사", "일자": "2026-11-05"},
-            {"사번": "3", "성명": "김", "부서": "재무팀", "구분": "휴직", "일자": "2026-11-05"},
-            {"사번": "4", "성명": "이", "부서": "재무팀", "구분": "퇴사", "일자": "모름"},
+            (2, {"사번": 12345.0, "성명": "홍길동", "부서": "재무팀", "입사일": "2026-11-05"}),
+            (3, {"사번": "12345", "성명": "홍길동", "부서": "재무팀", "입사일": "2026.11.05"}),
+            (4, {"사번": "2", "성명": "", "부서": "재무팀", "입사일": "2026-11-05"}),
+            (5, {"사번": "4", "성명": "이", "부서": "재무팀", "입사일": "모름"}),
         ]
-        events, errors = parse_events(rows, COLUMNS, EVENT_VALUES)
-        self.assertEqual(len(events), 1)
+        events, errors = parse_events(rows, JOIN_COLUMNS, "join")
+        self.assertEqual(len(merge_events(events)), 1)
         self.assertEqual(events[0].employee_id, "12345")
-        self.assertEqual(len(errors), 3)
+        self.assertEqual(len(errors), 2)
+        self.assertTrue(errors[0].startswith("4행"))
+
+    def test_key_without_employee_id(self):
+        events, _ = parse_events([(2, {"성명": "김철수", "부서": "감사", "퇴사일": "2026-11-07"})], LEAVE_COLUMNS, "leave")
+        self.assertEqual(events[0].key, "leave|감사/김철수|2026-11-07")
 
     def test_newlines_are_stripped(self):
-        rows = [{"사번": "1", "성명": "홍\r\n길동", "부서": "재무팀", "구분": "입사", "일자": "2026-11-05"}]
-        events, _ = parse_events(rows, COLUMNS, EVENT_VALUES)
+        rows = [(2, {"사번": "1", "성명": "홍\r\n길동", "부서": "재무팀", "입사일": "2026-11-05"})]
+        events, _ = parse_events(rows, JOIN_COLUMNS, "join")
         self.assertEqual(events[0].name, "홍 길동")
 
 
 class ReaderTest(unittest.TestCase):
-    def test_csv_encodings(self):
+    def test_column_index(self):
+        self.assertEqual([column_index(c) for c in ("A", "E", "Z", "AC", "ac")], [0, 4, 25, 28, 28])
+
+    def test_side_by_side_tables_with_different_lengths(self):
+        raw = side_by_side_rows(
+            [("1", "홍길동", "재무팀", "사원", "2026-11-05"), ("2", "이영희", "세무", "", "2026-11-06")],
+            [("김철수", "감사", "매니저", "2026-11-07")],
+        )
+        joins = extract_table(raw, *A_E, JOIN_COLUMNS.values())
+        leaves = extract_table(raw, *Z_AC, LEAVE_COLUMNS.values())
+        self.assertEqual([r["성명"] for _, r in joins], ["홍길동", "이영희"])
+        self.assertEqual([(n, r["성명"]) for n, r in leaves], [(4, "김철수")])  # 엑셀 행 번호 유지
+
+    def test_csv_encodings_and_short_rows(self):
         with tempfile.TemporaryDirectory() as d:
             for enc in ("utf-8-sig", "cp949"):
                 path = Path(d) / f"{enc}.csv"
-                path.write_bytes(CSV_TEXT.encode(enc))
-                rows = read_table(path, COLUMNS.values())
-                self.assertEqual(rows[0]["성명"], "홍길동")
-                self.assertEqual(len(rows), 3)
+                path.write_bytes(SAMPLE.read_text(encoding="utf-8-sig").encode(enc))
+                raw = read_sheet(path)
+                self.assertEqual(len(extract_table(raw, *A_E, JOIN_COLUMNS.values())), 3)
+                self.assertEqual(len(extract_table(raw, *Z_AC, LEAVE_COLUMNS.values())), 2)
 
-    def test_xlsx(self):
+    def test_xlsx_with_title_rows_and_wrapped_header(self):
         import openpyxl
 
         with tempfile.TemporaryDirectory() as d:
             path = Path(d) / "roster.xlsx"
             wb = openpyxl.Workbook()
             ws = wb.active
-            ws.append(["2026년 입퇴사자 현황"])
-            ws.append(["작성일: 2026-11-01"])
-            ws.append([])
-            ws.append([h if h != "성명" else "성\n명" for h in COLUMNS.values()])
-            ws.append([1001, "홍길동", "재무팀", "사원", "입사", datetime(2026, 11, 5), None])
+            for row in side_by_side_rows(
+                [(1001, "홍길동", "재무팀", "사원", datetime(2026, 11, 5))],
+                [("김철수", "감사", "매니저", datetime(2026, 11, 7))],
+            ):
+                ws.append(row)
+            ws["E3"] = "입사\n일"  # 셀 안 줄바꿈 헤더
             wb.save(path)
-            rows = read_table(path, COLUMNS.values())
-            events, errors = parse_events(rows, COLUMNS, EVENT_VALUES)
+            raw = read_sheet(path)
+            events, errors = parse_events(extract_table(raw, *A_E, JOIN_COLUMNS.values()), JOIN_COLUMNS, "join")
             self.assertEqual(errors, [])
-            self.assertEqual(events[0].employee_id, "1001")
-            self.assertEqual(events[0].date, date(2026, 11, 5))
+            self.assertEqual((events[0].employee_id, events[0].date), ("1001", date(2026, 11, 5)))
 
     def test_missing_header_reports_columns(self):
-        with tempfile.TemporaryDirectory() as d:
-            path = Path(d) / "bad.csv"
-            path.write_text("사번,이름,부서,직급,구분,일자,이메일\n1,홍길동,재무팀,,입사,2026-11-05,\n", encoding="utf-8")
-            with self.assertRaises(InputError) as ctx:
-                read_table(path, COLUMNS.values())
-            self.assertIn("성명", str(ctx.exception))
+        raw = side_by_side_rows([], [])
+        with self.assertRaises(InputError) as ctx:
+            extract_table(raw, *Z_AC, ["성명", "퇴사예정일"], "퇴사")
+        self.assertIn("퇴사예정일", str(ctx.exception))
 
 
 class AppTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.dir = Path(self.tmp.name)
-        (self.dir / "roster.csv").write_text(CSV_TEXT, encoding="utf-8-sig")
         (self.dir / "config.ini").write_text(CONFIG_TEXT, encoding="utf-8")
         self.cfg = load_config(self.dir / "config.ini")
         FakeMailer.sent = []
@@ -163,12 +183,13 @@ class AppTest(unittest.TestCase):
         self.assertEqual(run(self.cfg, today, mailer_factory=FakeMailer), 0)
         subjects = [m["Subject"] for m in FakeMailer.sent]
         self.assertEqual(len(subjects), 2)  # IT, 보안
-        self.assertIn("입사 1명, 퇴사 1명", subjects[0])
-        self.assertIn("퇴사 1명", subjects[1])
-        self.assertNotIn("입사", subjects[1].split("(")[-1])
+        self.assertIn("입사 2명, 퇴사 1명", subjects[0])
+        self.assertIn("(퇴사 1명)", subjects[1])
         body = FakeMailer.sent[0].get_body(("plain",)).get_content()
         self.assertIn("계정 생성", body)
-        self.assertNotIn("이영희", body)  # 기간 밖
+        self.assertIn("김철수", body)
+        self.assertNotIn("최지우", body)  # 기간 밖 (12/01)
+        self.assertNotIn("박민수", body)  # 기간 밖 (12/31)
 
         FakeMailer.sent = []
         self.assertEqual(run(self.cfg, today, mailer_factory=FakeMailer), 0)
@@ -188,10 +209,14 @@ class AppTest(unittest.TestCase):
         self.assertEqual([m["To"] for m in FakeMailer.sent], ["it@example.com"])
 
     def test_html_is_escaped(self):
-        (self.dir / "roster.csv").write_text(
-            "사번,성명,부서,직급,구분,일자,이메일\n1,<script>,재무팀,,입사,2026-11-05,\n", encoding="utf-8"
+        roster = self.dir / "roster.csv"
+        roster.write_text("사번,성명,부서,직급,입사일\n1,<script>,재무팀,,2026-11-05\n", encoding="utf-8")
+        (self.dir / "config.ini").write_text(
+            CONFIG_TEXT.replace(SAMPLE.as_posix(), "roster.csv").split("[leave]")[0]
+            + CONFIG_TEXT.split("date = 퇴사일")[1],
+            encoding="utf-8",
         )
-        run(self.cfg, date(2026, 11, 3), mailer_factory=FakeMailer)
+        run(load_config(self.dir / "config.ini"), date(2026, 11, 3), mailer_factory=FakeMailer)
         html = FakeMailer.sent[0].get_body(("html",)).get_content()
         self.assertNotIn("<script>", html)
         self.assertIn("&lt;script&gt;", html)
@@ -205,25 +230,35 @@ class AppTest(unittest.TestCase):
 
 
 class ConfigTest(unittest.TestCase):
-    def test_requires_team_section(self):
+    def _load(self, text):
         with tempfile.TemporaryDirectory() as d:
             path = Path(d) / "config.ini"
-            path.write_text(CONFIG_TEXT.split("[team:IT]")[0], encoding="utf-8")
-            with self.assertRaises(ConfigError):
-                load_config(path)
+            path.write_text(text, encoding="utf-8")
+            return load_config(path)
 
     def test_invalid_values(self):
-        with tempfile.TemporaryDirectory() as d:
-            path = Path(d) / "config.ini"
-            for bad in ("to = it@example.com\nkinds = hire", "to = not-an-email", "to ="):
-                path.write_text(CONFIG_TEXT.replace("to = it@example.com", bad), encoding="utf-8")
-                with self.assertRaises(ConfigError, msg=bad):
-                    load_config(path)
+        cases = [
+            ("to = it@example.com", "to = it@example.com\nkinds = hire"),
+            ("to = it@example.com", "to = not-an-email"),
+            ("range = A:E", "range = E:A"),
+            ("range = Z:AC", "range = Z-AC"),
+            ("date = 입사일", ""),
+        ]
+        for old, new in cases:
+            with self.assertRaises(ConfigError, msg=new):
+                self._load(CONFIG_TEXT.replace(old, new))
+
+    def test_requires_team_and_table_sections(self):
+        with self.assertRaises(ConfigError):
+            self._load(CONFIG_TEXT.split("[team:IT]")[0])
+        no_tables = CONFIG_TEXT.split("[join]")[0] + "[schedule]" + CONFIG_TEXT.split("[schedule]")[1]
+        with self.assertRaises(ConfigError):
+            self._load(no_tables)
 
     def test_example_config_loads(self):
-        cfg = load_config(Path(__file__).resolve().parent.parent / "config.example.ini")
+        cfg = load_config(ROOT / "config.example.ini")
         self.assertEqual([c.name for c in cfg.channels], ["team:IT", "team:총무", "team:보안"])
-        self.assertEqual(cfg.event_values["신규입사"], "join")
+        self.assertEqual([(t.kind, t.first_col, t.last_col) for t in cfg.tables], [("join", 0, 4), ("leave", 25, 28)])
 
 
 if __name__ == "__main__":

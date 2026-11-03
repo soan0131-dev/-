@@ -22,8 +22,9 @@ class Event:
 
     @property
     def key(self) -> str:
-        """중복 발송 방지용 고유 키."""
-        return f"{self.kind}|{self.employee_id}|{self.date.isoformat()}"
+        """중복 발송 방지용 고유 키. 사번이 없으면 부서+성명으로 식별한다. (마지막 '|' 뒤는 항상 일자)"""
+        ident = self.employee_id or f"{self.department}/{self.name}"
+        return f"{self.kind}|{ident}|{self.date.isoformat()}"
 
 
 def to_text(value: Any) -> str:
@@ -50,41 +51,42 @@ def parse_date(value: Any) -> date:
 
 
 def parse_events(
-    rows: Iterable[dict[str, Any]],
+    rows: Iterable[tuple[int, dict[str, Any]]],
     columns: dict[str, str],
-    event_values: dict[str, str],
+    kind: str,
 ) -> tuple[list[Event], list[str]]:
-    """행 목록을 이벤트로 변환한다. (이벤트 목록, 오류 메시지 목록) 반환."""
-    events: dict[str, Event] = {}
+    """(행 번호, 행) 목록을 kind(입사/퇴사) 이벤트로 변환한다. (이벤트 목록, 오류 메시지 목록) 반환."""
+    events: list[Event] = []
     errors: list[str] = []
 
-    for line_no, row in enumerate(rows, start=2):  # 1행은 헤더
+    for row_no, row in rows:
         values = {field: to_text(row.get(header)) for field, header in columns.items()}
-        missing = [f for f in REQUIRED_COLUMNS if not values.get(f)]
+        missing = [columns[f] for f in REQUIRED_COLUMNS if not values.get(f)]
         if missing:
-            errors.append(f"{line_no}행: 필수 값 누락 {[columns[f] for f in missing]}")
+            errors.append(f"{row_no}행: 필수 값 누락 {missing}")
             continue
-
-        kind = event_values.get(values["event_type"])
-        if kind is None:
-            errors.append(f"{line_no}행: 알 수 없는 구분 값 {values['event_type']!r}")
-            continue
-
         try:
             event_date = parse_date(row.get(columns["date"]))
         except ValueError as exc:
-            errors.append(f"{line_no}행: {exc}")
+            errors.append(f"{row_no}행: {exc}")
             continue
-
-        event = Event(
-            employee_id=values["employee_id"],
-            name=values["name"],
-            department=values["department"],
-            position=values.get("position", ""),
-            kind=kind,
-            date=event_date,
-            email=values.get("email", ""),
+        events.append(
+            Event(
+                employee_id=values.get("employee_id", ""),
+                name=values["name"],
+                department=values.get("department", ""),
+                position=values.get("position", ""),
+                kind=kind,
+                date=event_date,
+                email=values.get("email", ""),
+            )
         )
-        events.setdefault(event.key, event)
+    return events, errors
 
-    return sorted(events.values(), key=lambda e: (e.date, e.kind, e.department, e.name)), errors
+
+def merge_events(events: Iterable[Event]) -> list[Event]:
+    """중복 키 제거 후 일자·구분·부서·성명 순으로 정렬."""
+    unique: dict[str, Event] = {}
+    for e in events:
+        unique.setdefault(e.key, e)
+    return sorted(unique.values(), key=lambda e: (e.date, e.kind, e.department, e.name))

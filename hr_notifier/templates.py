@@ -34,10 +34,8 @@ def _task_body(channel: Channel, groups: dict[str, list[Event]]) -> tuple[str, s
             "<tr><th>일자</th><th>사번</th><th>부서</th><th>성명</th><th>직급</th><th>이메일</th></tr>"
         )
         for e in events:
-            text.append(
-                f"  - {_fmt_date(e.date)} | {e.employee_id} | {e.department} | {e.name} | {e.position} | {e.email}"
-            )
             cells = (_fmt_date(e.date), e.employee_id, e.department, e.name, e.position, e.email)
+            text.append("  - " + " | ".join(c for c in cells if c))
             html.append("<tr>" + "".join(f"<td>{escape(c)}</td>" for c in cells) + "</tr>")
         html.append("</table>")
         if tasks:
