@@ -19,31 +19,6 @@ def _group(events: list[Event]) -> dict[str, list[Event]]:
     return {kind: [e for e in events if e.kind == kind] for kind in EVENT_KINDS}
 
 
-def _person(e: Event) -> str:
-    position = f" {e.position}" if e.position else ""
-    return f"{e.department} {e.name}{position}"
-
-
-def _announce_body(groups: dict[str, list[Event]]) -> tuple[str, str]:
-    text: list[str] = ["안녕하세요, 인사 안내드립니다.", ""]
-    html: list[str] = ["<p>안녕하세요, 인사 안내드립니다.</p>"]
-    for kind, events in groups.items():
-        if not events:
-            continue
-        label = EVENT_LABELS[kind]
-        text.append(f"■ {label}")
-        html.append(f"<h3>{label}</h3><ul>")
-        for e in events:
-            text.append(f"  - {_fmt_date(e.date)} {_person(e)}")
-            html.append(f"<li>{escape(_fmt_date(e.date))} {escape(_person(e))}</li>")
-        text.append("")
-        html.append("</ul>")
-    closing = "새로 오신 분들은 따뜻하게 맞이해 주시고, 떠나시는 분들의 앞날을 응원해 주세요."
-    text.append(closing)
-    html.append(f"<p>{closing}</p>")
-    return "\n".join(text), "\n".join(html)
-
-
 def _task_body(channel: Channel, groups: dict[str, list[Event]]) -> tuple[str, str]:
     text: list[str] = [f"{channel.title} 담당자님, 아래 입퇴사자 관련 업무 처리를 요청드립니다.", ""]
     html: list[str] = [f"<p>{escape(channel.title)} 담당자님, 아래 입퇴사자 관련 업무 처리를 요청드립니다.</p>"]
@@ -76,12 +51,8 @@ def _task_body(channel: Channel, groups: dict[str, list[Event]]) -> tuple[str, s
 def build_message(channel: Channel, events: list[Event], sender: str, today: date) -> EmailMessage:
     groups = _group(events)
     counts = ", ".join(f"{EVENT_LABELS[k]} {len(v)}명" for k, v in groups.items() if v)
-    if channel.is_announce:
-        subject = f"[인사] 입퇴사자 안내 ({counts})"
-        text, html = _announce_body(groups)
-    else:
-        subject = f"[인사/{channel.title}] 입퇴사자 업무 처리 요청 ({counts})"
-        text, html = _task_body(channel, groups)
+    subject = f"[인사/{channel.title}] 입퇴사자 업무 처리 요청 ({counts})"
+    text, html = _task_body(channel, groups)
 
     footer = f"\n\n※ 본 메일은 입퇴사자 알림 시스템에서 자동 발송되었습니다. ({today.isoformat()})"
     msg = EmailMessage()

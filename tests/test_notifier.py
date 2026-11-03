@@ -47,8 +47,6 @@ CONFIG_TEXT = textwrap.dedent(
     [smtp]
     host = localhost
     sender = noti@example.com
-    [announce]
-    to = all@example.com
     [team:IT]
     to = it@example.com
     join_tasks =
@@ -154,11 +152,11 @@ class AppTest(unittest.TestCase):
         today = date(2026, 11, 3)
         self.assertEqual(run(self.cfg, today, mailer_factory=FakeMailer), 0)
         subjects = [m["Subject"] for m in FakeMailer.sent]
-        self.assertEqual(len(subjects), 3)  # announce, IT, 보안
+        self.assertEqual(len(subjects), 2)  # IT, 보안
         self.assertIn("입사 1명, 퇴사 1명", subjects[0])
-        self.assertIn("퇴사 1명", subjects[2])
-        self.assertNotIn("입사", subjects[2].split("(")[-1])
-        body = FakeMailer.sent[1].get_body(("plain",)).get_content()
+        self.assertIn("퇴사 1명", subjects[1])
+        self.assertNotIn("입사", subjects[1].split("(")[-1])
+        body = FakeMailer.sent[0].get_body(("plain",)).get_content()
         self.assertIn("계정 생성", body)
         self.assertNotIn("이영희", body)  # 기간 밖
 
@@ -173,7 +171,7 @@ class AppTest(unittest.TestCase):
     def test_failed_channel_is_retried(self):
         FakeMailer.fail_subjects = ("[인사/IT]",)
         self.assertEqual(run(self.cfg, date(2026, 11, 3), mailer_factory=FakeMailer), 1)
-        self.assertEqual(len(FakeMailer.sent), 2)
+        self.assertEqual([m["To"] for m in FakeMailer.sent], ["sec@example.com"])
 
         FakeMailer.sent, FakeMailer.fail_subjects = [], ()
         self.assertEqual(run(self.cfg, date(2026, 11, 3), mailer_factory=FakeMailer), 0)
@@ -190,13 +188,20 @@ class AppTest(unittest.TestCase):
 
     def test_state_prune(self):
         state = SentState(self.dir / "s.json")
-        state.mark("announce", ["join|1|2026-01-01", "join|2|2026-11-05"])
+        state.mark("team:IT", ["join|1|2026-01-01", "join|2|2026-11-05"])
         state.prune(before=date(2026, 10, 31))
-        self.assertFalse(state.is_sent("announce", "join|1|2026-01-01"))
-        self.assertTrue(state.is_sent("announce", "join|2|2026-11-05"))
+        self.assertFalse(state.is_sent("team:IT", "join|1|2026-01-01"))
+        self.assertTrue(state.is_sent("team:IT", "join|2|2026-11-05"))
 
 
 class ConfigTest(unittest.TestCase):
+    def test_requires_team_section(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "config.ini"
+            path.write_text(CONFIG_TEXT.split("[team:IT]")[0], encoding="utf-8")
+            with self.assertRaises(ConfigError):
+                load_config(path)
+
     def test_invalid_values(self):
         with tempfile.TemporaryDirectory() as d:
             path = Path(d) / "config.ini"
@@ -207,7 +212,7 @@ class ConfigTest(unittest.TestCase):
 
     def test_example_config_loads(self):
         cfg = load_config(Path(__file__).resolve().parent.parent / "config.example.ini")
-        self.assertEqual([c.name for c in cfg.channels], ["announce", "team:IT", "team:총무", "team:보안"])
+        self.assertEqual([c.name for c in cfg.channels], ["team:IT", "team:총무", "team:보안"])
         self.assertEqual(cfg.event_values["신규입사"], "join")
 
 

@@ -20,7 +20,6 @@ OPTIONAL_COLUMNS = ("position", "email")
 
 SMTP_SECURITY_MODES = ("starttls", "ssl", "none")
 
-ANNOUNCE_SECTION = "announce"
 TEAM_SECTION_PREFIX = "team:"
 
 
@@ -48,7 +47,7 @@ class SmtpConfig:
 
 @dataclass(frozen=True)
 class Channel:
-    """알림 발송 단위. 전사 공지(announce) 또는 담당 부서(team:XXX)."""
+    """알림 발송 단위 = 담당 부서([team:부서명] 섹션)."""
 
     name: str
     title: str
@@ -56,7 +55,6 @@ class Channel:
     cc: tuple[str, ...]
     kinds: tuple[str, ...]
     tasks: dict[str, tuple[str, ...]]
-    is_announce: bool
 
 
 @dataclass(frozen=True)
@@ -115,11 +113,10 @@ def _require(cp: configparser.ConfigParser, section: str, key: str) -> str:
 
 
 def _load_channel(cp: configparser.ConfigParser, section: str) -> Channel:
-    is_announce = section == ANNOUNCE_SECTION
     to = _split_addresses(cp.get(section, "to", fallback=""))
     if not to:
         raise ConfigError(f"[{section}] to 수신자가 필요합니다")
-    title = "전사 공지" if is_announce else section[len(TEAM_SECTION_PREFIX):].strip()
+    title = section[len(TEAM_SECTION_PREFIX):].strip()
     if not title:
         raise ConfigError(f"[{section}] 부서 이름이 비어 있습니다")
     return Channel(
@@ -129,7 +126,6 @@ def _load_channel(cp: configparser.ConfigParser, section: str) -> Channel:
         cc=_split_addresses(cp.get(section, "cc", fallback="")),
         kinds=_split_kinds(cp.get(section, "kinds", fallback=",".join(EVENT_KINDS)), section),
         tasks={kind: _split_lines(cp.get(section, f"{kind}_tasks", fallback="")) for kind in EVENT_KINDS},
-        is_announce=is_announce,
     )
 
 
@@ -180,9 +176,9 @@ def load_config(path: Path) -> AppConfig:
         password=os.environ.get(ENV_SMTP_PASSWORD) or None,
     )
 
-    channel_sections = [s for s in cp.sections() if s == ANNOUNCE_SECTION or s.startswith(TEAM_SECTION_PREFIX)]
+    channel_sections = [s for s in cp.sections() if s.startswith(TEAM_SECTION_PREFIX)]
     if not channel_sections:
-        raise ConfigError("[announce] 또는 [team:부서명] 섹션이 최소 1개 필요합니다")
+        raise ConfigError("[team:부서명] 섹션이 최소 1개 필요합니다")
     channels = tuple(_load_channel(cp, s) for s in channel_sections)
 
     log_value = cp.get("log", "path", fallback="").strip()
