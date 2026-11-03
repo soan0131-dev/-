@@ -9,7 +9,7 @@ from typing import Callable
 from .config import AppConfig, SmtpConfig
 from .mailer import Mailer
 from .reader import read_table
-from .records import check_headers, parse_events
+from .records import parse_events
 from .state import SentState
 from .templates import build_message
 
@@ -20,12 +20,7 @@ MailerFactory = Callable[[SmtpConfig, bool], Mailer]
 
 def run(cfg: AppConfig, today: date, dry_run: bool = False, mailer_factory: MailerFactory = Mailer) -> int:
     """실행 후 종료 코드 반환 (0: 정상, 1: 일부/전체 실패)."""
-    headers, rows = read_table(cfg.input.path, cfg.input.encoding, cfg.input.sheet)
-
-    missing = check_headers(headers, cfg.columns)
-    if missing:
-        log.error("명단 파일에 필요한 컬럼이 없습니다: %s (파일 헤더: %s)", missing, headers)
-        return 1
+    rows = read_table(cfg.input.path, cfg.columns.values(), cfg.input.encoding, cfg.input.sheet)
 
     events, errors = parse_events(rows, cfg.columns, cfg.event_values)
     for err in errors:

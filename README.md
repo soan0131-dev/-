@@ -11,6 +11,22 @@ Windows 작업 스케줄러로 하루 1~N회 실행하는 것을 전제로 만�
 3. 담당 부서(`[team:부서명]`)마다 아직 보내지 않은 대상을 모아 **메일 한 통**으로 보냅니다.
 4. 발송에 성공한 건은 `state/sent.json` 에 기록하므로 다시 보내지 않습니다. 발송에 실패한 채널은 다음 실행 때 다시 시도합니다.
 
+## 명단 파일 위치
+
+기본 설정은 OneDrive의 `인사업무-이소안\1. 인사\입퇴사자현황.xlsx` 를 읽습니다. 경로는 `config.ini` 의 `[input] path` 에서 바꿀 수 있습니다.
+
+```ini
+path = %OneDriveCommercial%\인사업무-이소안\1. 인사\입퇴사자현황.xlsx
+```
+
+`%OneDriveCommercial%` 은 Windows가 회사 OneDrive 폴더(`C:\Users\<사용자>\OneDrive - BDO Korea`)로 자동 설정하는 환경 변수입니다.
+
+OneDrive 파일을 읽으려면 다음 조건이 필요합니다.
+
+- **본인 계정으로 실행**: 작업 스케줄러를 다른 계정(서비스 계정 등)으로 실행하면 내 OneDrive 폴더를 읽을 수 없습니다.
+- **PC 로그인·동기화 상태**: 예약 시간에 PC가 켜져 있고 OneDrive가 로그인되어 있어야 합니다. 파일이 "온라인 전용"이면 실행할 때 자동으로 내려받습니다.
+- **Excel에서 열려 있어도 됨**: 읽기만 하므로 파일이 Excel에 열려 있어도 동작합니다. 다만 저장하지 않은 수정 내용은 반영되지 않습니다.
+
 ## 명단 파일 형식
 
 | 사번 | 성명 | 부서 | 직급 | 구분 | 일자 | 이메일 |
@@ -18,6 +34,7 @@ Windows 작업 스케줄러로 하루 1~N회 실행하는 것을 전제로 만�
 | 20261101 | 홍길동 | 재무팀 | 사원 | 입사 | 2026-11-05 | gildong.hong@example.com |
 
 - 헤더 이름은 설정 파일의 `[columns]` 에서 바꿀 수 있습니다. 직급과 이메일은 없어도 됩니다.
+- 상단에 제목·작성일 행이 있어도 됩니다. 상위 30행 안에서 설정한 헤더가 모두 있는 행을 자동으로 찾습니다. 헤더 안의 공백·줄바꿈 차이는 무시합니다.
 - 일자는 `2026-11-05`, `2026.11.05`, `2026/11/05`, `20261105` 형식과 엑셀 날짜 셀을 모두 인식합니다.
 - CSV는 UTF-8(BOM 포함)과 CP949를 자동으로 판별합니다.
 - 형식이 잘못된 행은 건너뛰고 로그에 경고로 남깁니다.
@@ -35,7 +52,7 @@ copy config.example.ini config.ini
 
 `config.ini` 를 환경에 맞게 수정합니다. 파일은 UTF-8로 저장하세요.
 
-SMTP 계정은 설정 파일에 적지 말고 **환경 변수**로 지정합니다. 작업을 실행하는 서비스 계정에 설정하세요.
+SMTP 계정은 설정 파일에 적지 말고 **환경 변수**로 지정합니다. 작업 스케줄러가 실행하는 계정(본인 계정)에서 설정하세요.
 
 ```bat
 setx HR_NOTIFIER_SMTP_USER "hr-noti@example.com"
@@ -60,10 +77,10 @@ run_notifier.bat
 ### 작업 스케줄러 등록 (예: 평일 오전 8시 40분)
 
 ```bat
-schtasks /Create /TN "HR Notifier" /TR "\"C:\hr_notifier\run_notifier.bat\"" /SC WEEKLY /D MON,TUE,WED,THU,FRI /ST 08:40 /RU "DOMAIN\svc_hrnoti" /RP
+schtasks /Create /TN "HR Notifier" /TR "\"C:\hr_notifier\run_notifier.bat\"" /SC WEEKLY /D MON,TUE,WED,THU,FRI /ST 08:40 /IT
 ```
 
-`/RU` 에는 명단 파일 공유 폴더를 읽을 권한이 있는 서비스 계정을 지정합니다.
+`/RU` 를 생략하면 현재 로그인한 본인 계정으로 실행됩니다. `/IT` 를 주면 로그인해 있을 때만 실행되므로 OneDrive 파일에 접근할 수 있습니다.
 
 ### 실행기(`run_notifier.bat`)가 쓰는 환경 변수
 

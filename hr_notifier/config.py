@@ -9,6 +9,8 @@ import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from .reader import normalize_header
+
 ENV_SMTP_USER = "HR_NOTIFIER_SMTP_USER"
 ENV_SMTP_PASSWORD = "HR_NOTIFIER_SMTP_PASSWORD"
 
@@ -148,9 +150,9 @@ def load_config(path: Path) -> AppConfig:
 
     columns: dict[str, str] = {}
     for key in REQUIRED_COLUMNS:
-        columns[key] = _require(cp, "columns", key)
+        columns[key] = normalize_header(_require(cp, "columns", key))
     for key in OPTIONAL_COLUMNS:
-        header = cp.get("columns", key, fallback="").strip()
+        header = normalize_header(cp.get("columns", key, fallback=""))
         if header:
             columns[key] = header
 

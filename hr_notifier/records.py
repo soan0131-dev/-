@@ -49,12 +49,6 @@ def parse_date(value: Any) -> date:
     raise ValueError(f"날짜 형식을 인식할 수 없습니다: {value!r}")
 
 
-def check_headers(headers: Iterable[str], columns: dict[str, str]) -> list[str]:
-    """설정된 컬럼 중 파일에 없는 헤더 목록을 반환."""
-    present = set(headers)
-    return [header for header in columns.values() if header not in present]
-
-
 def parse_events(
     rows: Iterable[dict[str, Any]],
     columns: dict[str, str],

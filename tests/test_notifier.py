@@ -7,7 +7,7 @@ from pathlib import Path
 
 from hr_notifier.app import run
 from hr_notifier.config import ConfigError, load_config
-from hr_notifier.reader import read_table
+from hr_notifier.reader import InputError, read_table
 from hr_notifier.records import parse_date, parse_events
 from hr_notifier.state import SentState
 
@@ -113,8 +113,7 @@ class ReaderTest(unittest.TestCase):
             for enc in ("utf-8-sig", "cp949"):
                 path = Path(d) / f"{enc}.csv"
                 path.write_bytes(CSV_TEXT.encode(enc))
-                headers, rows = read_table(path)
-                self.assertEqual(headers[0], "사번")
+                rows = read_table(path, COLUMNS.values())
                 self.assertEqual(rows[0]["성명"], "홍길동")
                 self.assertEqual(len(rows), 3)
 
@@ -125,14 +124,25 @@ class ReaderTest(unittest.TestCase):
             path = Path(d) / "roster.xlsx"
             wb = openpyxl.Workbook()
             ws = wb.active
-            ws.append(list(COLUMNS.values()))
+            ws.append(["2026년 입퇴사자 현황"])
+            ws.append(["작성일: 2026-11-01"])
+            ws.append([])
+            ws.append([h if h != "성명" else "성\n명" for h in COLUMNS.values()])
             ws.append([1001, "홍길동", "재무팀", "사원", "입사", datetime(2026, 11, 5), None])
             wb.save(path)
-            headers, rows = read_table(path)
+            rows = read_table(path, COLUMNS.values())
             events, errors = parse_events(rows, COLUMNS, EVENT_VALUES)
             self.assertEqual(errors, [])
             self.assertEqual(events[0].employee_id, "1001")
             self.assertEqual(events[0].date, date(2026, 11, 5))
+
+    def test_missing_header_reports_columns(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "bad.csv"
+            path.write_text("사번,이름,부서,직급,구분,일자,이메일\n1,홍길동,재무팀,,입사,2026-11-05,\n", encoding="utf-8")
+            with self.assertRaises(InputError) as ctx:
+                read_table(path, COLUMNS.values())
+            self.assertIn("성명", str(ctx.exception))
 
 
 class AppTest(unittest.TestCase):
