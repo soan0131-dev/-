@@ -2,9 +2,16 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Repository Status
+## Project
 
-This repository is currently empty — there are no commits on any branch, locally or on the remote (`origin` at `soan0131-dev/-`). There is no existing codebase, build system, test suite, or architecture to document yet. Once code is added, this file should be updated to reflect actual build/lint/test commands and the real architecture — do not invent commands or structure that don't exist.
+입퇴사자 알림 서비스 (`hr_notifier`): reads an HR roster (CSV/XLSX), selects joiners/leavers whose date falls in `[today - past_days, today + lead_days]`, and emails a company-wide announcement plus per-team task requests via SMTP. Intended to run on Windows via Task Scheduler (`run_notifier.bat`). See README.md for usage.
+
+- Python 3.9+; only third-party dependency is `openpyxl` (`requirements.txt`).
+- Tests: `python -m unittest -v` (all in `tests/test_notifier.py`).
+- Run locally: `python -m hr_notifier --config config.ini --dry-run [--today YYYY-MM-DD]`.
+- All environment-specific values live in `config.ini` (copied from `config.example.ini`, git-ignored); SMTP credentials come only from env vars `HR_NOTIFIER_SMTP_USER` / `HR_NOTIFIER_SMTP_PASSWORD`.
+
+Architecture: `app.run()` orchestrates `reader` (file → rows) → `records` (rows → `Event`, dedup by `kind|employee_id|date`) → `templates` (one `EmailMessage` per channel) → `mailer` (single lazy SMTP connection). `state.SentState` records sent keys per channel in `state/sent.json` so each channel gets each event once; failed channels retry on the next run. Channels are config sections `[announce]` and `[team:<name>]`.
 
 ## Development Guidelines
 

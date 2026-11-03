@@ -1,0 +1,7 @@
+# 로컬 설정 및 실행 산출물
+config.ini
+state/
+logs/
+.venv/
+__pycache__/
+*.pyc
