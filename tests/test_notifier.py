@@ -14,8 +14,11 @@ from hr_notifier.state import SentState
 ROOT = Path(__file__).resolve().parent.parent
 SAMPLE = ROOT / "samples" / "sample_roster.csv"
 
-JOIN_COLUMNS = {"employee_id": "사번", "name": "성명", "department": "부서", "position": "직급", "date": "입사일"}
-LEAVE_COLUMNS = {"name": "성명", "department": "부서", "position": "직급", "date": "퇴사일"}
+# 실제 명단 형식: 입사자(성명, 입사날짜, 본부) / 퇴사자(성명, 퇴사날짜, 본부)
+JOIN_COLUMNS = {"name": "성명", "date": "입사날짜", "department": "본부"}
+LEAVE_COLUMNS = {"name": "성명", "date": "퇴사날짜", "department": "본부"}
+# 선택 컬럼(사번 등)까지 있는 형식
+FULL_COLUMNS = {"employee_id": "사번", "name": "성명", "department": "부서", "position": "직급", "date": "입사일"}
 A_E = (0, 4)
 Z_AC = (25, 28)
 
@@ -25,17 +28,14 @@ CONFIG_TEXT = textwrap.dedent(
     path = {SAMPLE.as_posix()}
     [join]
     range = A:E
-    employee_id = 사번
     name = 성명
-    department = 부서
-    position = 직급
-    date = 입사일
+    date = 입사날짜
+    department = 본부
     [leave]
     range = Z:AC
     name = 성명
-    department = 부서
-    position = 직급
-    date = 퇴사일
+    date = 퇴사날짜
+    department = 본부
     [schedule]
     lead_days = 7
     past_days = 3
@@ -78,11 +78,15 @@ class FakeMailer:
 def side_by_side_rows(join_rows, leave_rows, title=True):
     """A:E 입사자 표, Z:AC 퇴사자 표가 나란히 있는 시트 행 생성."""
     rows = [("2026년 입퇴사자 현황",), ()] if title else []
-    rows.append(tuple(JOIN_COLUMNS.values()) + (None,) * 20 + tuple(LEAVE_COLUMNS.values()))
+
+    def pad(left):
+        return tuple(left) + (None,) * (25 - len(left))  # A~Y
+
+    rows.append(pad(JOIN_COLUMNS.values()) + tuple(LEAVE_COLUMNS.values()))
     for i in range(max(len(join_rows), len(leave_rows))):
-        left = tuple(join_rows[i]) if i < len(join_rows) else (None,) * 5
+        left = join_rows[i] if i < len(join_rows) else ()
         right = tuple(leave_rows[i]) if i < len(leave_rows) else ()
-        rows.append(left + (None,) * 20 + right)
+        rows.append(pad(left) + right)
     return rows
 
 
@@ -101,18 +105,18 @@ class RecordsTest(unittest.TestCase):
             (4, {"사번": "2", "성명": "", "부서": "재무팀", "입사일": "2026-11-05"}),
             (5, {"사번": "4", "성명": "이", "부서": "재무팀", "입사일": "모름"}),
         ]
-        events, errors = parse_events(rows, JOIN_COLUMNS, "join")
+        events, errors = parse_events(rows, FULL_COLUMNS, "join")
         self.assertEqual(len(merge_events(events)), 1)
         self.assertEqual(events[0].employee_id, "12345")
         self.assertEqual(len(errors), 2)
         self.assertTrue(errors[0].startswith("4행"))
 
     def test_key_without_employee_id(self):
-        events, _ = parse_events([(2, {"성명": "김철수", "부서": "감사", "퇴사일": "2026-11-07"})], LEAVE_COLUMNS, "leave")
-        self.assertEqual(events[0].key, "leave|감사/김철수|2026-11-07")
+        events, _ = parse_events([(2, {"성명": "김철수", "본부": "감사본부", "퇴사날짜": "2026-11-07"})], LEAVE_COLUMNS, "leave")
+        self.assertEqual(events[0].key, "leave|감사본부/김철수|2026-11-07")
 
     def test_newlines_are_stripped(self):
-        rows = [(2, {"사번": "1", "성명": "홍\r\n길동", "부서": "재무팀", "입사일": "2026-11-05"})]
+        rows = [(2, {"성명": "홍\r\n길동", "본부": "감사본부", "입사날짜": "2026-11-05"})]
         events, _ = parse_events(rows, JOIN_COLUMNS, "join")
         self.assertEqual(events[0].name, "홍 길동")
 
@@ -123,8 +127,8 @@ class ReaderTest(unittest.TestCase):
 
     def test_side_by_side_tables_with_different_lengths(self):
         raw = side_by_side_rows(
-            [("1", "홍길동", "재무팀", "사원", "2026-11-05"), ("2", "이영희", "세무", "", "2026-11-06")],
-            [("김철수", "감사", "매니저", "2026-11-07")],
+            [("홍길동", "2026-11-05", "감사본부"), ("이영희", "2026-11-06", "세무본부")],
+            [("김철수", "2026-11-07", "세무본부")],
         )
         joins = extract_table(raw, *A_E, JOIN_COLUMNS.values())
         leaves = extract_table(raw, *Z_AC, LEAVE_COLUMNS.values())
@@ -148,16 +152,16 @@ class ReaderTest(unittest.TestCase):
             wb = openpyxl.Workbook()
             ws = wb.active
             for row in side_by_side_rows(
-                [(1001, "홍길동", "재무팀", "사원", datetime(2026, 11, 5))],
-                [("김철수", "감사", "매니저", datetime(2026, 11, 7))],
+                [("홍길동", datetime(2026, 11, 5), "감사본부")],
+                [("김철수", datetime(2026, 11, 7), "세무본부")],
             ):
                 ws.append(row)
-            ws["E3"] = "입사\n일"  # 셀 안 줄바꿈 헤더
+            ws["B3"] = "입사\n날짜"  # 셀 안 줄바꿈 헤더
             wb.save(path)
             raw = read_sheet(path)
             events, errors = parse_events(extract_table(raw, *A_E, JOIN_COLUMNS.values()), JOIN_COLUMNS, "join")
             self.assertEqual(errors, [])
-            self.assertEqual((events[0].employee_id, events[0].date), ("1001", date(2026, 11, 5)))
+            self.assertEqual((events[0].name, events[0].date, events[0].department), ("홍길동", date(2026, 11, 5), "감사본부"))
 
     def test_missing_header_reports_columns(self):
         raw = side_by_side_rows([], [])
@@ -188,6 +192,10 @@ class AppTest(unittest.TestCase):
         body = FakeMailer.sent[0].get_body(("plain",)).get_content()
         self.assertIn("계정 생성", body)
         self.assertIn("김철수", body)
+        self.assertIn("감사본부", body)
+        html = FakeMailer.sent[0].get_body(("html",)).get_content()
+        self.assertIn("<th>소속</th>", html)
+        self.assertNotIn("<th>사번</th>", html)  # 값이 없는 항목은 표시하지 않음
         self.assertNotIn("최지우", body)  # 기간 밖 (12/01)
         self.assertNotIn("박민수", body)  # 기간 밖 (12/31)
 
@@ -210,10 +218,10 @@ class AppTest(unittest.TestCase):
 
     def test_html_is_escaped(self):
         roster = self.dir / "roster.csv"
-        roster.write_text("사번,성명,부서,직급,입사일\n1,<script>,재무팀,,2026-11-05\n", encoding="utf-8")
+        roster.write_text("성명,입사날짜,본부\n<script>,2026-11-05,감사본부\n", encoding="utf-8")
         (self.dir / "config.ini").write_text(
             CONFIG_TEXT.replace(SAMPLE.as_posix(), "roster.csv").split("[leave]")[0]
-            + CONFIG_TEXT.split("date = 퇴사일")[1],
+            + CONFIG_TEXT.split("department = 본부", 2)[2],
             encoding="utf-8",
         )
         run(load_config(self.dir / "config.ini"), date(2026, 11, 3), mailer_factory=FakeMailer)
@@ -242,7 +250,7 @@ class ConfigTest(unittest.TestCase):
             ("to = it@example.com", "to = not-an-email"),
             ("range = A:E", "range = E:A"),
             ("range = Z:AC", "range = Z-AC"),
-            ("date = 입사일", ""),
+            ("date = 입사날짜", ""),
         ]
         for old, new in cases:
             with self.assertRaises(ConfigError, msg=new):

@@ -10,6 +10,16 @@ from .records import Event
 
 WEEKDAYS = "월화수목금토일"
 
+# 메일 표에 표시할 항목 (라벨, Event 속성). 명단에 값이 하나도 없는 항목은 표시하지 않는다.
+DISPLAY_FIELDS = (
+    ("일자", "date"),
+    ("사번", "employee_id"),
+    ("소속", "department"),
+    ("성명", "name"),
+    ("직급", "position"),
+    ("이메일", "email"),
+)
+
 
 def _fmt_date(d: date) -> str:
     return f"{d.isoformat()}({WEEKDAYS[d.weekday()]})"
@@ -28,13 +38,15 @@ def _task_body(channel: Channel, groups: dict[str, list[Event]]) -> tuple[str, s
         label = EVENT_LABELS[kind]
         tasks = channel.tasks.get(kind, ())
         text.append(f"■ {label}자 ({len(events)}명)")
+        fields = [(name, attr) for name, attr in DISPLAY_FIELDS if any(getattr(e, attr) for e in events)]
         html.append(
             f"<h3>{label}자 ({len(events)}명)</h3>"
-            '<table border="1" cellpadding="4" cellspacing="0" style="border-collapse:collapse">'
-            "<tr><th>일자</th><th>사번</th><th>부서</th><th>성명</th><th>직급</th><th>이메일</th></tr>"
+            '<table border="1" cellpadding="4" cellspacing="0" style="border-collapse:collapse"><tr>'
+            + "".join(f"<th>{name}</th>" for name, _ in fields)
+            + "</tr>"
         )
         for e in events:
-            cells = (_fmt_date(e.date), e.employee_id, e.department, e.name, e.position, e.email)
+            cells = [_fmt_date(e.date) if attr == "date" else getattr(e, attr) for _, attr in fields]
             text.append("  - " + " | ".join(c for c in cells if c))
             html.append("<tr>" + "".join(f"<td>{escape(c)}</td>" for c in cells) + "</tr>")
         html.append("</table>")
